@@ -20,8 +20,10 @@ DEFAULT_STYLE_FORMULA = ('10.-(float(5*error'
 
 class Submission:
     
-    def __init__(self, path, style_weighting=10.,
-                 style_score_formula=DEFAULT_STYLE_FORMULA):
+    def __init__(self, path, style_weighting=10., *,
+                 style_formula=DEFAULT_STYLE_FORMULA,
+                 mailto=None,
+                 **kwargs):
         self.path = path
         with open(path, 'r') as f:
             self.source = f.read()
@@ -32,7 +34,8 @@ class Submission:
         self.weighting = {'style' : style_weighting}
         aggr_weight = sum(wt for wt in self.weighting.values())
         self.weighting['test'] = max((0, 100. - aggr_weight))
-        self.style_calc = build_style_calc(style_score_formula)
+        self.style_calc = build_style_calc(style_formula)
+        self.mailto = None
         
     @property
     def score(self):
@@ -79,23 +82,22 @@ class Submission:
         self.feedback[item] = feedback
         
         
-    def generate_report(self, out_file):
+    def generate_report(self):
         """
-        Generate report for this submission and print to file.
+        Generate report for this submission.
         """
-        print('Result summary for submission %s' % self.reference,
-              file=out_file)
+        lines = []
+        lines.append('Result summary for submission %s' % self.reference)
         test_report = self.feedback.get('test', None)
         style_report = self.feedback.get('style', None)
         
         if test_report is not None:
-            print('\nResults of test cases', file=out_file)
+            lines.append('\nResults of test cases')
             for result, test, err in test_report.all_tests:
-                print('%s: %s' % (result, test_report.getDescription(test)),
-                      file=out_file)
+                lines.append('%s: %s' % (result, test_report.getDescription(test)))
         if style_report is not None:
-            print('\nResults of style analysis', file=out_file)
-            print(style_report.read(), sep='', file=out_file)
+            lines.append('\nResults of style analysis')
+            lines.append(style_report.read())
             
-        print('', '=' * 70, 'Final score: %s%%\n' % self.score, sep='\n',
-              file=out_file)
+        lines.append('\n' + '=' * 70 + '\n' + 'Final score: %s%%' % self.score)
+        return '\n'.join(lines)

@@ -1,0 +1,21 @@
+Result summary for submission 122
+
+Results of test cases
+SUCCESS: test_gcd_1 (builtins.Test_gcd) gcd with inputs 12, 16; expected 4
+FAILED: test_gcd_2 (builtins.Test_gcd) gcd with inputs 52, 76; expected
+FAILED: test_gcd_3 (builtins.Test_gcd) gcd with inputs 264, 328; expected 8
+
+Results of style analysis
+
+2: 9: C0326: Exactly one space required after comma
+def gcd(a,b):
+         ^
+
+2: 0: R1710: Either all return statements in a function should return an expression, or none of them should.
+
+3: 8: W0612: Unused variable 'i'
+
+
+======================================================================
+Final score: 36%
+
