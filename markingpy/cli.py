@@ -34,6 +34,8 @@ def run():
                         help='Save submission grades to csv')
     parser.add_argument('-m', '--mail', action='store_true',
                         help='Send results to submitter by email')
+    parser.add_argument('-o', '--out', default=None,
+                        help='Directory to store reports')
     args = parser.parse_args()
 
     if args.submissions is not None and not pathexists(args.submissions):

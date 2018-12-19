@@ -29,7 +29,6 @@ class Submission:
             self.source = f.read()
         self.reference = os.path.splitext(os.path.basename(path))[0]
         self.globals = {}
-        self.code = self.compile()
         self.feedback = {}
         self.weighting = {'style' : style_weighting}
         aggr_weight = sum(wt for wt in self.weighting.values())
@@ -71,10 +70,9 @@ class Submission:
         """
         Compile the submssion source code.
         """
-        code = compile(self.source, self.path, 'exec')
-        exec(code, self.globals)
-        return code
-        
+        self.code = compile(self.source, self.path, 'exec')
+        exec(self.code, self.globals)
+                
     def add_feedback(self, item, feedback):
         """
         Add feedback to the submission.

@@ -26,17 +26,24 @@ class Grader:
         self.at_exit = []
         
     def grade_submission(self, submission, **opts):
+    
+        # lint first, catch syntax errors
+        report = self.linter(submission.path)
+        submission.add_feedback('style', report)
+        
+        # safe to compile submission
+        submission.compile()
+        
         tests = load_tests(self.tests, submission.globals)
         
         stream = StringIO()
         result = TextTestRunner(stream=stream, resultclass=TestResult).run(tests)
         submission.add_feedback('test', result)
         
-        report = self.linter(submission.path)
-        submission.add_feedback('style', report)
+        
         
         report = submission.generate_report()
-        if 'out' in opts:
+        if 'out' in opts and opts['out'] is not None:
             out_path = pathjoin(opts['out'], submission.reference + '.txt')
             with open(out_path, 'w') as f:
                 f.write(report)
