@@ -6,91 +6,87 @@ Helper module to compile files that might contain syntax errors.
 
 import sys
 from code import InteractiveInterpreter
-from codeop import CommandCompiler
+from io import StringIO
 
 
-
-class Compiler:
-
-    def __init__(self, source, filename='<input>', locals=None):
-        self.locals = locals if locals else {}
-        self.filename = filename
+class Compiler(InteractiveInterpreter):
+    """
+    Source code compiler that compiles all syntactically correct
+    source code and populates a local namespace.
+    
+    Arugments:
+        filename - A string containing the name of the origin of
+                   the source code.
+        locals - A dictionary to be populated with the names
+                 defined in the provided source.
+    
+    Attributes:
+        filename
+        locals
+        report - A string buffer containing the traceback for any
+                 errors encountered during compilation.
+    
+    Methods:
+        reset_buffer
+        write
+        push
+        compile_source
         
-        self.lines = map(str.rstrip, source.splitlines())
-        self.compile = CommandCompiler()
-        self.syntax_errors = []
-        self.code_blocks = []
+    """
 
-        self.current_line = None
-        self.lineno = 0
+    def __init__(self, filename, locals):
+        """
+        Constructor.
+        
+        """
+        super().__init__(locals)
+        self.filename = filename
+        self.reset_buffer()
+        self.report = StringIO()
 
-        self.reset_buffer(add_block=False)
-
-    def reset_buffer(self, add_block=True):
+    def reset_buffer(self):
         """
         Reset the input buffer.
         """
-        if add_block and self.buffer:
-            self.code_blocks.append(self.buffer)
         self.buffer = []
 
-    def run(self, code):
+    def write(self, data):
         """
-        Execute a code object
+        Write compilation errors to the internal buffer.
+
+        Arguments:
+            data - string data to write.
         """
-        try:
-            exec(code, self.locals)
-        except SystemExit:
-            raise
-        except:
-            print('Exception raised')
-            print(*self.buffer,sep='\n', end='\n'+'='*70)
+        self.report.write(data)
+
+    def push(self, line):
+        """
+        Push a line to the interpreter.
         
-    def test_source(self, source, filename='<input>', symbol='single'):
+        Arguments:
+            line - String to be processed.
         """
-        Attempt to compile and run the command as though in an interpreter.
-        """
-        try:
-            code = self.compile(source, filename, symbol)
-        except IndentationError:
-            print('Indentation Error', self.lineno)
-            if self.code_blocks:
-                self.code_blocks[-1].append(self.current_line)
-            self.reset_buffer(add_block=False)
-            return False
-        except (OverflowError, SyntaxError, ValueError):
-            self.syntax_errors.append(sys.exc_info())
-            self.reset_buffer()
-            return False
-
-        if code is None:
-            print(source, end='\n' + '='*70 + '\n')
-            return True
-        
-       # print(source, end='\n' + '='*70 + '\n')
-
-        self.run(code)
-        self.reset_buffer()
-        return False
-                                      
-
-    def push(self):
+        self.buffer.append(line)
         source = '\n'.join(self.buffer)
-        more = self.test_source(source, self.filename)
+        more = self.runsource(source, self.filename)
+        if not more:
+            self.reset_buffer()
         return more
 
-    def __iter__(self):
-        return self
+    def compile_source(self, source):
+        """
+        Compile the source ignoring any compilation errors.
 
-    def __next__(self):
-        try:
-            self.lineno += 1
-            self.current_line = next(self.lines)
-            self.buffer.append(self.current_line)
-            self.push()
-        except StopIteration:
-            self.push()
-            self.reset_buffer()
-            raise
-        return self.current_line
-    
+        Populate the compiler's locals dictionary with the
+        variables defined in source. Any code containing
+        syntax errors will not be compiled, and those names
+        will not be contained in the locals.
+
+        Arguments:
+            Source - string containing source to be compiled.
+        """
+        for line in source.splitlines():
+            self.push(line.rstrip())
+        # Push one final blank line to ensure the final buffer
+        # is executed
+        self.push('')

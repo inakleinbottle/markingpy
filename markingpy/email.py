@@ -1,3 +1,9 @@
+"""
+Utilities for sending feedback via email.
+
+Work in progress.
+"""
+
 import mimetypes
 import smtplib
 from getpass import getpass
@@ -5,8 +11,17 @@ from email.message import EmailMessage
 
 
 class EmailSender:
+    """
+    Email message compiler and server connection.
+    
+    Composes email messages from supplied data and connects
+    to smtp server to send messages.
+    """
 
-    def __init__(self, sender, username=None, server_addr = ('localhost', 461)):
+    def __init__(self, sender, username=None, server_addr=('localhost', 461)):
+        """
+        Constructor.
+        """
         self.sender = sender
         host, port = server_addr
         if port == 587:
@@ -21,13 +36,19 @@ class EmailSender:
         self.messages = []
 
     def authenticate(self):
+        """
+        Get login password and log in to the smtp server.
+        """
         password = getpass()
         self.server.login(self.username, password)
-        
+
     def quit(self):
+        """
+        Close the connection with the server.
+        """
         self.server.quit()
-    
-    def create_mail(self, to, subject, body, *, 
+
+    def create_mail(self, to, subject, body, *,
                     cc=None, bcc=None, attach=None):
         """
         Create messages to be sent.
@@ -57,10 +78,12 @@ class EmailSender:
         self.messages.append(msg)
 
     def send_all(self):
+        """
+        Send all messages to the server.
+        """
         for msg in self.messages:
             print('Sending %s to %s' % (msg, msg['To']))
             self.server.send_message(msg)
-
 
     # context manager
     def __enter__(self):
@@ -69,6 +92,3 @@ class EmailSender:
 
     def __exit__(self, *args, **kwargs):
         self.quit()
-
-
-

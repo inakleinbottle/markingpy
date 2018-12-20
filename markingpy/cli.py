@@ -1,3 +1,5 @@
+"""Command line interface for MarkingPy."""
+
 import sys
 from argparse import ArgumentParser
 from os.path import exists as pathexists
@@ -7,22 +9,30 @@ from pkgutil import get_data
 from markingpy import CONFIG_PATHS, Grader
 
 
-
-
-
 class CLIError(Exception):
+    """
+    Custom exception for command line Errors.
+    """
 
     def __init__(self, msg, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.msg = msg
 
+
 def load_config():
+    """
+    Configuration file loader for markingpy.
+    """
     parser = ConfigParser()
     parser.read_string(get_data('markingpy', 'data/markingpy.conf').decode())
     parser.read(CONFIG_PATHS)
     return parser
 
+
 def run():
+    """
+    Build the argument parser and run the grader.
+    """
     config = load_config()
 
     parser = ArgumentParser()
@@ -40,12 +50,12 @@ def run():
 
     if args.submissions is not None and not pathexists(args.submissions):
         raise CLIError('Submissions directory %s cannot be found'
-                % args.submissions)
+                       % args.submissions)
     elif args.submissions is None:
-        path =  config['grader']['submissions']
+        path = config['grader']['submissions']
         if not pathexists(path):
-            raise CLIError('Submissions directory %s cannot be found' 
-                    % path)
+            raise CLIError('Submissions directory %s cannot be found'
+                           % path)
         args.submissions = path
 
     if args.scheme is not None and not pathexists(args.scheme):
@@ -62,8 +72,10 @@ def run():
     return 0
 
 
-
 def main():
+    """
+    Main command line runner.
+    """
 
     try:
         exit_code = run()
@@ -71,12 +83,12 @@ def main():
         print(e.msg)
         exit_code = 1
     except Exception as e:
-        raise 
         exit_code = 1
-    
+        raise
+        
+
     sys.exit(exit_code)
 
 
 if __name__ == '__main__':
     main()
-

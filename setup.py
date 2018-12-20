@@ -1,7 +1,8 @@
 from setuptools import setup
 
 
-
+with open('README.md', 'rt', encoding='utf-8') as f:
+    descr = f.read()
 
 setup(name='markingpy',
       author='InAKleinBottle',
@@ -14,5 +15,6 @@ setup(name='markingpy',
       entry_points = {
           'console_scripts' : ['markingpy=markingpy.cli:main'],
           },
-      package_data = {'markingpy' : ['data/markingpy.conf']}
+      package_data = {'markingpy' : ['data/markingpy.conf',
+                                     'data/scheme.py']}
       )

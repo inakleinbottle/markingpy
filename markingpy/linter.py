@@ -4,21 +4,21 @@ class LinterReport:
     """
     Report class for collecing output of the linter.
     """
-    
+
     def __init__(self):
         self.content = []
         self.stats = None
-    
+
     def write(self, text):
         if not text.startswith('***'):
             self.content.append(text.strip())
-        
+
     def read(self):
         if self.content:
             return '\n'.join(self.content)
         else:
             return 'No issues found'
-        
+
     def set_stats(self, stats):
         self.stats = stats
 
@@ -29,7 +29,7 @@ def linter(file):
     """
     from pylint.lint import PyLinter
     from pylint.reporters.text import TextReporter
-    
+
     report = LinterReport()
     linter = PyLinter()
     linter.load_default_plugins()
