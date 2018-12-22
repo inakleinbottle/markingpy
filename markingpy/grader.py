@@ -3,6 +3,8 @@ Grading tool for python files.
 """
 
 import sys
+import logging
+
 from os import listdir
 from os.path import join as pathjoin
 from unittest import TextTestRunner
@@ -14,6 +16,7 @@ from .linter import linter
 from .storage import write_csv
 from .email import EmailSender
 
+logger = logging.getLogger(__name__)
 
 class Grader:
     """
