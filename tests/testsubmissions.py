@@ -8,8 +8,10 @@ from unittest.mock import patch, mock_open, MagicMock
 
 from textwrap import dedent
 
-from markingpy.submission import Submission, build_style_calc
-
+from markingpy.submission import Submission
+from markingpy.utils import (build_style_calc, 
+                             default_style_calc,
+                             test_calculator)
 
 class TestStyleCalculator(TestCase):
 
@@ -26,8 +28,10 @@ class TestStyleCalculator(TestCase):
 
         calc = build_style_calc('(error + warning + refactor + convention)'
                                 '/statement')
+        mock = MagicMock()
+        mock.stats = test_dict
 
-        self.assertEqual(calc(test_dict), 7/15)
+        self.assertEqual(calc(mock), 7/15)
 
 
 
@@ -50,7 +54,6 @@ class TestSubmission(TestCase):
         
         self.submission = Submission('test_path')
 
-
     def test_compilation_and_report(self):
         """Test compilation and reporting."""
         try:
@@ -58,7 +61,6 @@ class TestSubmission(TestCase):
         except Exception:
             self.fail()
         self.assertIn('compilation', self.submission.feedback)
-
 
     def test_score_calculation(self):
         """Test score calculation."""
@@ -70,6 +72,10 @@ class TestSubmission(TestCase):
                        'refactor' : 1,
                        }
         self.submission.add_feedback('style', style)
+        self.submission.weighting['style'] = 10.
+        self.submission.set_score('style', 
+                                  default_style_calc,
+                                  )
         tests = MagicMock()
         tests.all_tests = [('SUCCESS',),
                            ('SUCCESS',),
@@ -78,9 +84,21 @@ class TestSubmission(TestCase):
                            ('FAILED',),
                            ]
         self.submission.add_feedback('test', tests)
+        self.submission.weighting['test'] = 90.
+        self.submission.set_score('test',
+                                  test_calculator)
+                                  
         expected_score = 2.0 + 90*3/5
         self.assertEqual(self.submission.score, expected_score)
 
-        
-        
-        
+    def test_run_of_tests(self):
+        """Test that submission runs test cases correctly."""
+        report = MagicMock()
+        tester = MagicMock(side_effect=lambda x: report)
+        calc = MagicMock(side_effect=lambda x: 0.0)
+        self.submission.run_test('test', tester, calc, 0.0)
+
+        tester.assert_called_with(self.submission)
+        calc.assert_called_with(report)
+        self.assertIn('test', self.submission.weighting)
+

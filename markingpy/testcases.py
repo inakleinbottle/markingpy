@@ -7,6 +7,8 @@ import unittest
 
 from inspect import isclass
 
+from markingpy.exercise import Exercise
+
 
 class TestResult(unittest.TestResult):
     """
@@ -84,8 +86,8 @@ def load_tests(tests, submission_globals):
     _globals = submission_globals.copy()
     exec(tests, _globals)
     test_cls = [cls for name, cls in _globals.items()
-                if isclass(cls)
-                if name.startswith('Test_')]
+                if issubclass(cls, Exercise)
+               ]
     if not test_cls:
         raise RuntimeError('No tests found in %s' % test_file)
 
@@ -96,22 +98,4 @@ def load_tests(tests, submission_globals):
     return suite
 
 
-def test_factory(test_dict, _globals):
-    """
-    Generate the unit tests to run from config file.
-    """
-    tests = {}
-    for func_name, test_params in test_dict.items():
-        for i, test in enumerate(test_params):
-            inputs = test['input']
-            expected = test['expected']
 
-            def test_fun(self):
-                self.assertEqual(_globals[func_name](*inputs), expected)
-            test_fun.__doc__ = 'Test %s with inputs %s; expected %s' % (
-                func_name, ', '.join(map(str, inputs)), str(expected))
-            tests['test_' + func_name + '_%s' % i] = test_fun
-    cls = types.new_class('Test' + func_name,
-                          (unittest.TestCase,),
-                          exec_body=lambda ns: ns.update(tests))
-    return cls

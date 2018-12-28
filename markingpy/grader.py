@@ -10,13 +10,18 @@ from os.path import join as pathjoin
 from unittest import TextTestRunner
 from io import StringIO
 
+
 from .testcases import load_tests, TestResult
 from .submission import Submission
 from .linter import linter
 from .storage import write_csv
 from .email import EmailSender
+from .utils import build_style_calc, test_calculator
+from .exercise import run_tests
 
 logger = logging.getLogger(__name__)
+
+
 
 class Grader:
     """
@@ -29,44 +34,41 @@ class Grader:
         """
         self.directory = directory
         self.config = config
-        self.submissions = [Submission(pathjoin(directory, path), **config['submission'])
-                            for path in listdir(directory)
-                            if path.endswith('.py')]
         with open(test_file) as f:
             self.tests = compile(f.read(), test_file, 'exec')
+        
+        # first pass to populate global options
+        args = {}
+        exec(self.tests, args)
+        #logger.info(args)
+        self.weighting = args['scheme']
+        formula = config['grader']['style_formula']
+        self.style_calc = build_style_calc(formula)
+        self.submissions = [Submission(pathjoin(directory, path))
+                            for path in listdir(directory)
+                            if path.endswith('.py')]
 
         self.linter = linter
-        self.mailsender = None
         self.at_exit = []
+        
+        
 
     def grade_submission(self, submission, **opts):
         """
         Run the grader tests on a submission.
         """
-        # lint first, catch syntax errors
-        report = self.linter(submission.path)
-        submission.add_feedback('style', report)
-
-        # safe to compile submission
         submission.compile()
-
-        tests = load_tests(self.tests, submission.globals)
-
-        stream = StringIO()
-        result = TextTestRunner(
-            stream=stream, resultclass=TestResult).run(tests)
-        submission.add_feedback('test', result)
-
-        report = submission.generate_report()
-        if 'out' in opts and opts['out'] is not None:
-            out_path = pathjoin(opts['out'], submission.reference + '.txt')
-            with open(out_path, 'w') as f:
-                f.write(report)
-
-        if self.mailsender and submission.mailto:
-            self.mailsender.create_mail(submission.mailto,
-                                        'Submission results',
-                                        report)
+        # linter
+        submission.run_test('style', 
+                            lambda s: self.linter(s),
+                            self.style_calc,
+                            self.weighting['style'])
+        
+        # tests
+        submission.run_test('test',
+                            lambda s: run_tests(self.tests, s),
+                            test_calculator, 
+                            self.weighting['test'])
 
     def dump_to_csv(self, path):
         """
@@ -78,25 +80,22 @@ class Grader:
         """
         Run the grader.
         """
-        if opts['mail']:
-            sender = self.config['email']['sender']
-            username = self.config['email']['username']
-            host = self.config['email']['host']
-            port = int(self.config['email']['port'])
-            self.mailsender = EmailSender(sender,
-                                          username=username,
-                                          server_addr=(host, port))
-            self.at_exit.append(self.mailsender.quit)
+
 
         for submission in self.submissions:
             self.grade_submission(submission, **opts)
 
         if opts['csv'] is not None:
             self.dump_to_csv(opts['csv'])
-
-        if self.mailsender:
-            self.mailsender.authenticate()
-            self.mailsender.send_all()
+        elif opts['out'] is not None:
+            directory = opts['out']
+            for sub in self.submissions:
+                with open(pathjoin(directory, 
+                                   sub.reference + '.txt'), 'w') as f:
+                    f.write(sub.generate_report())
+        elif opts['print']:
+            for submission in self.submissions:
+                print(f'Submission {submission.reference}: {submission.score}')
 
     # context manager
 

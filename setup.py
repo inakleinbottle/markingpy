@@ -1,8 +1,8 @@
 from setuptools import setup
 
 
-with open('README.md', 'rt', encoding='utf-8') as f:
-    descr = f.read()
+#with open('README.md', 'rt', encoding='utf-8') as f:
+#    descr = f.read()
 
 setup(name='markingpy',
       author='InAKleinBottle',

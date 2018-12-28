@@ -2,6 +2,9 @@
 Utilities for the MarkingPy package.
 """
 from contextlib import contextmanager
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     import resource
@@ -16,6 +19,28 @@ except ImportError:
 
 def time_exceeded():
     raise TimeoutError()
+
+
+def build_style_calc(formula):
+    """
+    Build a style calculator by providing a formula
+    """
+    def calculator(report):
+        return max(0.0, eval(formula, report.stats))
+    return calculator
+    
+DEFAULT_STYLE_FORMULA = ('1. - float(5*error'
+                         ' + warning'
+                         ' + refactor'
+                         ' + convention)'
+                         ' / statement')
+default_style_calc = build_style_calc(DEFAULT_STYLE_FORMULA)
+
+def test_calculator(report):
+    all_tests = report.all_tests
+    return (len(list(filter(lambda t: t[0] == 'SUCCESS', all_tests)))
+            / len(all_tests))
+    
 
 
 if resource is not None and signal is not None:

@@ -7,9 +7,46 @@ Helper module to compile files that might contain syntax errors.
 import sys
 from code import InteractiveInterpreter
 from io import StringIO
+from collections import namedtuple, deque
 
 
-class Compiler(InteractiveInterpreter):
+Chunk = namedtuple('Chunk', ('line_start', 'line_end', 'content'))
+Reason = namedtuple('Reason', ('removed_at', 'exc'))
+
+class RemovedChunk(Chunk):
+
+    reasons = []
+
+    def is_adjacent(self, other):
+        return (abs(other.line_end - self.line_start) <= 1 
+                or abs(other.line_start - self.line_end) <= 1)
+
+    def add_reason(self, *reason):
+        rm_list = [r.removed_at for r in self.reasons]
+        for r in reason:
+            if not r.removed_at in rm_list:
+                self.reasons.append(r)
+
+    def join(self, other):
+        if self.line_start > other.line_end:
+            # other first
+            content = '\n'.join([other.content, self.content])
+            start = other.line_start
+            end = self.line_end
+        else:
+            # this first
+            content = '\n'.join([self.content, other.content])
+            start = self.line_start
+            end = other.line_end
+        new_removed = RemovedChunk(start, end, content)
+        new_removed.add_reason(*list(set([*self.reasons, *other.reasons])))
+        return new_removed
+
+    def get_first_error(self):
+        return min(self.reasons, key=lambda r: r.removed_at)
+
+
+class Compiler:
     """
     Source code compiler that compiles all syntactically correct
     source code and populates a local namespace.
@@ -19,61 +56,75 @@ class Compiler(InteractiveInterpreter):
                    the source code.
         locals - A dictionary to be populated with the names
                  defined in the provided source.
-    
-    Attributes:
-        filename
-        locals
-        report - A string buffer containing the traceback for any
-                 errors encountered during compilation.
-    
-    Methods:
-        reset_buffer
-        write
-        push
-        compile_source
         
     """
 
-    def __init__(self, filename, locals):
+    def __init__(self, filename='<input>', mode='exec'):
         """
         Constructor.
-        
         """
-        super().__init__(locals)
         self.filename = filename
-        self.reset_buffer()
-        self.report = StringIO()
-
-    def reset_buffer(self):
-        """
-        Reset the input buffer.
-        """
-        self.buffer = []
-
-    def write(self, data):
-        """
-        Write compilation errors to the internal buffer.
-
-        Arguments:
-            data - string data to write.
-        """
-        self.report.write(data)
-
-    def push(self, line):
-        """
-        Push a line to the interpreter.
+        self.mode = mode
+        self.removed_chunks = []
+        self.chunks = []
+        self.removed = 0
+        self.to_process = deque()
         
-        Arguments:
-            line - String to be processed.
-        """
-        self.buffer.append(line)
-        source = '\n'.join(self.buffer)
-        more = self.runsource(source, self.filename)
-        if not more:
-            self.reset_buffer()
-        return more
+    def __call__(self, source, *,
+                 filename='<input>', mode='exec',
+                 flags=0, dont_inherit=False, optimize=-1):
+        self.filename = filename
+        self.mode = mode
+        return self.compile_source(source, filename, mode, flags,
+                                   dont_inherit, optimize)
 
-    def compile_source(self, source):
+    def remove_line(self, chunk, lineno, reason):
+        """
+        Remove a line from the source.
+        """
+        # self.report.append((lineno, reason))
+        lines = chunk.content.splitlines()
+        reason.lineno = chunk.line_start + lineno - 1
+        self.removed += 1
+        removed_chunk = RemovedChunk(reason.lineno, reason.lineno, lines[lineno-1])
+        removed_chunk.add_reason(Reason(self.removed, reason))
+        adjacent = [c for c in self.removed_chunks
+                    if c.is_adjacent(removed_chunk)]
+        if not adjacent:
+            self.removed_chunks.append(removed_chunk)
+        else:
+            for c in adjacent:
+                removed_chunk = c.join(removed_chunk)
+                self.removed_chunks.remove(c)
+            self.removed_chunks.append(removed_chunk)
+
+        #print('Removing line', reason.lineno, lines[lineno-1])
+        return (Chunk(chunk.line_start, lineno-2, '\n'.join(lines[:lineno-1])),
+                Chunk(reason.lineno, chunk.line_end, '\n'.join(lines[lineno:])))
+
+    def try_compile(self, chunk):
+        """
+        Try compiling a chunk.
+        """
+        try:
+            compile(chunk.content, self.filename, self.mode, optimize=0)
+            self.chunks.append(chunk)
+        except SyntaxError as err:
+            self.handle_compile_exception(err, chunk)
+
+    def handle_compile_exception(self, err, chunk):
+        """
+        Handle an exception raised during compilation.
+        """
+        lineno = err.lineno
+        before, after = self.remove_line(chunk, lineno, err)
+        if before.content:
+            self.to_process.append(before)
+        if after.content:
+            self.to_process.append(after)
+
+    def compile_source(self, source, filename, mode, flags,
+                       dont_inherit, optimize):
         """
         Compile the source ignoring any compilation errors.
 
@@ -85,8 +136,14 @@ class Compiler(InteractiveInterpreter):
         Arguments:
             Source - string containing source to be compiled.
         """
-        for line in source.splitlines():
-            self.push(line.rstrip())
-        # Push one final blank line to ensure the final buffer
-        # is executed
-        self.push('')
+        self.to_process.append(Chunk(0, len(source.splitlines()), source))
+        while self.to_process:
+            self.try_compile(self.to_process.popleft())
+        self.sort_chunks()
+        new_source = '\n'.join(map(lambda c: c.content, self.chunks))
+        return compile(new_source, filename, mode, flags,
+                       dont_inherit, optimize)
+
+    def sort_chunks(self):
+        self.chunks.sort(key=lambda c: c.line_start)
+        

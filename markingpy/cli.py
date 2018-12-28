@@ -65,6 +65,11 @@ def run():
         if not pathexists(path):
             raise CLIError('Marking scheme %s cannot be found' % path)
         args.scheme = path
+        
+    if args.out or args.csv:
+        args.print = False
+    else:
+        args.print = True
 
     with Grader(args.submissions, args.scheme, config) as grader:
         grader.grade_submissions(**vars(args))

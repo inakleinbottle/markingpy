@@ -1,4 +1,5 @@
-
+from pylint.lint import PyLinter
+from pylint.reporters.text import TextReporter
 
 class LinterReport:
     """
@@ -23,12 +24,11 @@ class LinterReport:
         self.stats = stats
 
 
-def linter(file):
+def linter(submission):
     """
     Run the linter and generate a report for the submission.
     """
-    from pylint.lint import PyLinter
-    from pylint.reporters.text import TextReporter
+    
 
     report = LinterReport()
     linter = PyLinter()
@@ -41,6 +41,6 @@ def linter(file):
             )
     linter.load_command_line_configuration(args)
     linter.set_reporter(TextReporter(report))
-    linter.check(file)
+    linter.check(submission.path)
     report.set_stats(linter.stats)
     return report
