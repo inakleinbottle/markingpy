@@ -15,7 +15,8 @@ Reason = namedtuple('Reason', ('removed_at', 'exc'))
 
 class RemovedChunk(Chunk):
 
-    reasons = []
+    def __init__(self, *args, **kwargs):
+        self.reasons = []
 
     def is_adjacent(self, other):
         return (abs(other.line_end - self.line_start) <= 1 
@@ -86,6 +87,7 @@ class Compiler:
         lines = chunk.content.splitlines()
         reason.lineno = chunk.line_start + lineno - 1
         self.removed += 1
+        
         removed_chunk = RemovedChunk(reason.lineno, reason.lineno, lines[lineno-1])
         removed_chunk.add_reason(Reason(self.removed, reason))
         adjacent = [c for c in self.removed_chunks
