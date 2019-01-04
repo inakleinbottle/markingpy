@@ -2,159 +2,214 @@
 Exercise building utilities.
 """
 import logging
-from io import StringIO
-from unittest import (TestCase, 
-                      TextTestRunner,
-                      TestSuite,
-                      TestResult,
-                      defaultTestLoader
-                     )
+from functools import wraps
+from unittest import TestCase, TestResult
+from unittest.mock import patch as patch
+from collections import namedtuple
+from types import new_class
 
-
-from inspect import stack, currentframe, isclass
+from .utils import time_run
 
 logger = logging.getLogger(__name__)
 
+INDENT = ' '*4
 
-def mark_scheme(**components):
-    """
-    Declare the parameters for the marking scheme.
-    """
-    stack()[1][0].f_globals['scheme'] = components
 
-class TestResult(TestResult):
-    """
-    Class to hold results of exercises.
-    """
+def new_test_equal(model, call_args, call_kwargs):
+    def tester(other):
+        def test_method(self):
+            self.assertEqual(other(*call_args, **call_kwargs),
+                             model(*call_args, **call_kwargs))
+        return test_method
+    return tester
 
-    def __init__(self, stream, descriptions, verbosity):
-        """
-        Constructor.
-        """
-        super(TestResult, self).__init__(stream, descriptions, verbosity)
-        self.all_tests = []
-        self.descriptions = descriptions
 
-    def addSuccess(self, test):
-        """
-        Add a successful test to the result.
-        """
-        super(TestResult, self).addSuccess(test)
-        if test is not None:
-            self.all_tests.append(('SUCCESS', test, None))
+def new_test_true(func_name, test_func):
+    def tester(other):
+        def test_method(self):
+            # with patch(test_func.__module__ + '.' + func_name, other):
+            test_func.__globals__[func_name] = other
+            output = test_func()
+            if isinstance(output, bool):
+                self.assertTrue(output)
+            elif isinstance(output, tuple):
+                outcome, feedback = output
+                self.assertTrue(outcome)
+        return test_method
+    return tester
 
-    def addError(self, test, err):
-        """
-        Add an error to the result.
-        """
-        if test is not None:
-            self.all_tests.append(('ERROR', test, err))
 
-    def addFailure(self, test, err):
-        """
-        Add failed test to the result.
-        """
-        super(TestResult, self).addFailure(test, err)
-        if test is not None:
-            self.all_tests.append(('FAILED', test, err))
+def new_timing_test(cases, tolerance):
+    def tester(other):
+        def test_method(self):
+            for cs, target in cases:
+                runtime = time_run(other, cs)
+                if runtime is None:
+                    self.fail(msg='Execution failed')
+                self.assertLessEqual(runtime, (1.0 + tolerance)*target)
 
-    def addSubTest(self, test, subtest, err):
+        return test_method
+    return tester
+
+
+class ExerciseError(Exception):
+    pass
+
+
+TestFeedback = namedtuple('TestFeedback', ('test', 'mark', 'feedback'))
+
+
+class Test:
+
+    def __init__(self, name, test_func, marks, descr=None, **kwargs):
+        self.name = name
+        self.marks = marks
+        self.test_func = test_func
+        self.descr = descr
+
+    def create_test(self, other):
         """
-        Add a subtest to the result.
+        Create a unittest testcase for this test.
+
+        :return: Unittest.TestCase.
         """
-        super(TestResult, self).addSubTest(test, subtest, err)
-        if err is not None:
-            if issubclass(err[0], test.failureException):
-                result = 'FAIL'
-            else:
-                result = 'ERROR'
-                err = err[0]
+        test_case = new_class(self.name, (TestCase,))
+        test_case.runTest = self.test_func(other)
+        return test_case
+
+    def format_feedback(self, result):
+        """
+        Format the feedback of the test.
+        :param result:
+        :return:
+        """
+        outcome, feedback = self.get_success(result)
+        rv = [f'Ran {self.name}: {"Pass" if outcome else "Fail"}']
+        if self.descr:
+            rv.append(INDENT + self.descr)
+        for fb in feedback:
+            rv.append(INDENT + fb)
+        return '\n'.join(rv)
+
+    def get_success(self, result):
+        """
+        Determine whether the test was successful
+        :param result:
+        :return:
+        """
+        feedback = []
+        success = result.wasSuccessful()
+        if not success:
+            for err in result.errors:
+                feedback.append(err[1])
+        return success, feedback
+
+    def __call__(self, other):
+        """
+        Run test on specified other.
+        :param other: Function to run test against.
+        :return: Namedtuple containing Test, score, feedback
+        """
+        test = self.create_test(other)()
+        result = TestResult()
+        test.run(result)
+        feedback = self.format_feedback(result)
+        return TestFeedback(self, self.marks, feedback)
+
+
+ExerciseFeedback = namedtuple('Feedback', ('marks', 'total_marks', 'feedback'))
+
+
+class Exercise:
+
+    def __init__(self, func, **args):
+        wraps(func)(self)
+        self.tests = []
+        self.num_tests = 0
+        self.func = func
+        self.name = func.__name__
+
+    def __call__(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
+
+    @property
+    def total_marks(self):
+        return sum(t.marks for t in self.tests)
+
+    def add_test_call(self, call_params=None, call_kwparams=None, **args):
+        """
+        Add a call test to the exercise.
+
+        Submission function is evaluated against the model solution, and is successful
+        if both functions return the same value.
+
+        :param call_params:
+        :param call_kwparams:
+        """
+        call_params = call_params if call_params is not None else tuple()
+        call_kwparams = call_kwparams if call_kwparams is not None else dict()
+        self.num_tests += 1
+        name = self.name + str(self.num_tests)
+        test = Test(name, new_test_equal(self, call_params, call_kwparams), **args)
+        self.tests.append(test)
+        return test
+
+    def timing_test(self, *cases, **args):
+        """
+        Test the timing of a submission against the model.
+
+        :param cases:
+        :param args:
+        :return:
+        """
+        self.num_tests += 1
+        name = self.name + str(self.num_tests)
+        try:
+            tolerance = args.pop('tolerance')
+        except KeyError:
+            tolerance = 0.1
+        test = Test(name, new_timing_test(cases, tolerance), **args)
+        self.tests.append(test)
+        return test
+
+    def test(self, **args):
+        """
+        Add a new test using an arbitrary
+        :param args:
+        :return:
+        """
+        def decorator(func):
+            test = Test(func.__name__, new_test_true(self.name, func), **args)
+            self.tests.append(test)
+            return test
+        return decorator
+
+    def run(self, namespace):
+        """
+        Run the test suite on submission.
+
+        :param namespace: submission object
+        :return: namedtuple containing marks, total_marks, feedback
+        """
+        submission_fun = namespace.get(self.name, None)
+        if submission_fun is not None:
+            results = [test(submission_fun) for test in self.tests]
+            feedback = [r.feedback for r in results]
+            score = sum(r.mark for r in results)
+
+            return ExerciseFeedback(score, self.total_marks,
+                                    '\n'.join(feedback))
         else:
-            result = 'SUCCESS'
-        self.all_tests.append((result, subtest, err))
+            msg = 'Function {} was not found in submission.'
+            return ExerciseFeedback(0, self.total_marks, [msg.format(self.name)])
 
-    def addSkip(self, test, reason):
-        """
-        Add a skipped test to the result.
-        """
-        super(TestResult, self).addSkip(test, reason)
-        #print('SKIP: %s' % str(test))
 
-    def getDescription(self, test):
-        """
-        Get the description of a test.
-        """
-        doc_first_line = test.shortDescription()
-        if self.descriptions and doc_first_line:
-            return str(test) + ' ' + doc_first_line
-        else:
-            str(test)
-
-def load_tests(tests, submission_globals):
+def exercise(**args):
     """
-    Load the tests from a file.
+    Create a new exercise using this function as the model solution.
     """
-    _globals = submission_globals.copy()
-    exec(tests, _globals)
-    test_cls = [cls for name, cls in _globals.items()
-                if isclass(cls)
-                if issubclass(cls, Exercise)
-               ]
-    if not test_cls:
-        raise RuntimeError('No tests found in %s' % test_file)
-
-    suite = TestSuite()
-    for cls in test_cls:
-        test_names = defaultTestLoader.getTestCaseNames(cls)
-        suite.addTests(map(cls, test_names))
-    return suite
-
-def run_tests(test_source, submission):
-    """
-    Run a suite of tests on a dictionary of names.
-    """
-    suite = load_tests(test_source, submission.globals)
-    stream = StringIO()
-    return TextTestRunner(stream=stream,
-                          resultclass=TestResult
-                         ).run(suite)
-    
-    
-    
-    
+    def decorator(func):
+        return Exercise(func, **args)
+    return decorator
 
 
-
-def null_function(*args, **kwargs):
-    """
-    Null function used to replace non-existent names
-    in the global namespace during tests.
-    """
-    return None
-
-
-class Exercise(TestCase):
-    """
-    Exercise test case class for grading work.
-
-    Test case ensures that the required functions
-    are defined in the current global scope.
-    """
-
-    names = []
-
-    def setUp(self):
-        glbs = stack()[1][0].f_globals
-        for name in self.names:
-            if name not in glbs:
-                glbs[name] = null_function
-        self.set_up()
-
-
-    def set_up(self):
-        """
-        Perform the necessary setup for the test.
-
-        Overwrite in subclasses as necessary.
-        """
-        pass

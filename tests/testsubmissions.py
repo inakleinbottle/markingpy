@@ -13,8 +13,8 @@ from markingpy.utils import (build_style_calc,
                              default_style_calc,
                              test_calculator)
 
-class TestStyleCalculator(TestCase):
 
+class TestStyleCalculator(TestCase):
 
     def test_style_calc_builder(self):
         """Test the style calculator factory."""
@@ -34,9 +34,7 @@ class TestStyleCalculator(TestCase):
         self.assertEqual(calc(mock), 7/15)
 
 
-
 class TestSubmission(TestCase):
-
 
     def setUp(self):
         source = dedent("""
@@ -58,8 +56,8 @@ class TestSubmission(TestCase):
         """Test compilation and reporting."""
         try:
             self.submission.compile()
-        except Exception:
-            self.fail()
+        except Exception as e:
+            self.fail(msg='Compilation failed')
         self.assertIn('compilation', self.submission.feedback)
 
     def test_score_calculation(self):

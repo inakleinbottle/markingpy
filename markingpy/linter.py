@@ -1,9 +1,10 @@
 from pylint.lint import PyLinter
 from pylint.reporters.text import TextReporter
 
+
 class LinterReport:
     """
-    Report class for collecing output of the linter.
+    Report class for collecting output of the linter.
     """
 
     def __init__(self):

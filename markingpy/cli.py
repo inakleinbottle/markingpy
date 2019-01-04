@@ -3,10 +3,8 @@
 import sys
 from argparse import ArgumentParser
 from os.path import exists as pathexists
-from configparser import ConfigParser
-from pkgutil import get_data
 
-from markingpy import CONFIG_PATHS, Grader
+from markingpy import Grader, GLOBAL_CONF
 
 
 class CLIError(Exception):
@@ -19,21 +17,14 @@ class CLIError(Exception):
         self.msg = msg
 
 
-def load_config():
-    """
-    Configuration file loader for markingpy.
-    """
-    parser = ConfigParser()
-    parser.read_string(get_data('markingpy', 'data/markingpy.conf').decode())
-    parser.read(CONFIG_PATHS)
-    return parser
+
 
 
 def run():
     """
     Build the argument parser and run the grader.
     """
-    config = load_config()
+    config = GLOBAL_CONF
 
     parser = ArgumentParser()
     parser.add_argument('submissions', default=None,
@@ -71,7 +62,7 @@ def run():
     else:
         args.print = True
 
-    with Grader(args.submissions, args.scheme, config) as grader:
+    with Grader(args.submissions, args.scheme) as grader:
         grader.grade_submissions(**vars(args))
 
     return 0

@@ -1,8 +1,9 @@
 """
 Utilities for the MarkingPy package.
 """
-from contextlib import contextmanager
 import logging
+from contextlib import contextmanager
+from time import time
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,21 @@ def test_calculator(report):
     all_tests = report.all_tests
     return (len(list(filter(lambda t: t[0] == 'SUCCESS', all_tests)))
             / len(all_tests))
-    
+
+def time_run(func, args):
+    """
+    Time the running of a function.
+    :param func:
+    :param args:
+    :return:
+    """
+    start_time = time()
+    try:
+        func(*args)
+    except Exception as err:
+        logger.error(err)
+        return None
+    return time() - start_time
 
 
 if resource is not None and signal is not None:

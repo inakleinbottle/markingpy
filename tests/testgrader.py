@@ -9,7 +9,7 @@ from textwrap import dedent
 
 
 from markingpy.grader import Grader
-from markingpy.submission import Submission
+#from markingpy.submission import Submission
 
 
 def _listdir(*args, **kwargs):
@@ -62,8 +62,9 @@ class GraderTester(TestCase):
 
         grader = Grader('testdir',
                         'scheme.py',
-                        {'grader' : {'style_formula' : ''}})
+                        {'grader': {'style_formula': ''},
+                         })
         self.submission_mock.assert_called()
         self.open_mock.assert_called()
         self.assertEqual(grader.weighting,
-                         {'style' : 10.0, 'test' : 90.0}) 
+                         {'style': 10.0, 'test': 90.0})

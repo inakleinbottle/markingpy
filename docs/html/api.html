@@ -66,7 +66,7 @@
 <h1>Submissions<a class="headerlink" href="#submissions" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="markingpy.submission.Submission">
-<em class="property">class </em><code class="descclassname">markingpy.submission.</code><code class="descname">Submission</code><span class="sig-paren">(</span><em>path</em>, <em>style_weighting=10.0</em>, <em>*</em>, <em>style_formula='10.-(float(5*error+warning+refactor+convention)/statement)*10.'</em>, <em>mailto=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.submission.Submission" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">markingpy.submission.</code><code class="descname">Submission</code><span class="sig-paren">(</span><em>path</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.submission.Submission" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="method">
 <dt id="markingpy.submission.Submission.add_feedback">
 <code class="descname">add_feedback</code><span class="sig-paren">(</span><em>item</em>, <em>feedback</em><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.submission.Submission.add_feedback" title="Permalink to this definition">¶</a></dt>
@@ -85,6 +85,12 @@
 <dd><p>Generate report for this submission.</p>
 </dd></dl>
 
+<dl class="method">
+<dt id="markingpy.submission.Submission.run_test">
+<code class="descname">run_test</code><span class="sig-paren">(</span><em>ref</em>, <em>test</em>, <em>calc</em>, <em>weight</em><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.submission.Submission.run_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a test on the submission</p>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -92,7 +98,7 @@
 <h1>Compiler<a class="headerlink" href="#compiler" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="markingpy.compiler.Compiler">
-<em class="property">class </em><code class="descclassname">markingpy.compiler.</code><code class="descname">Compiler</code><span class="sig-paren">(</span><em>filename</em>, <em>locals</em><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.compiler.Compiler" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">markingpy.compiler.</code><code class="descname">Compiler</code><span class="sig-paren">(</span><em>filename='&lt;input&gt;'</em>, <em>mode='exec'</em><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.compiler.Compiler" title="Permalink to this definition">¶</a></dt>
 <dd><p>Source code compiler that compiles all syntactically correct
 source code and populates a local namespace.</p>
 <dl class="docutils">
@@ -104,22 +110,10 @@ source code and populates a local namespace.</p>
 <dd>defined in the provided source.</dd>
 </dl>
 </dd>
-<dt>Attributes:</dt>
-<dd><p class="first">filename
-locals
-report - A string buffer containing the traceback for any</p>
-<blockquote class="last">
-<div>errors encountered during compilation.</div></blockquote>
-</dd>
-<dt>Methods:</dt>
-<dd>reset_buffer
-write
-push
-compile_source</dd>
 </dl>
 <dl class="method">
 <dt id="markingpy.compiler.Compiler.compile_source">
-<code class="descname">compile_source</code><span class="sig-paren">(</span><em>source</em><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.compiler.Compiler.compile_source" title="Permalink to this definition">¶</a></dt>
+<code class="descname">compile_source</code><span class="sig-paren">(</span><em>source</em>, <em>filename</em>, <em>mode</em>, <em>flags</em>, <em>dont_inherit</em>, <em>optimize</em><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.compiler.Compiler.compile_source" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compile the source ignoring any compilation errors.</p>
 <p>Populate the compiler’s locals dictionary with the
 variables defined in source. Any code containing
@@ -132,29 +126,21 @@ will not be contained in the locals.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="markingpy.compiler.Compiler.push">
-<code class="descname">push</code><span class="sig-paren">(</span><em>line</em><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.compiler.Compiler.push" title="Permalink to this definition">¶</a></dt>
-<dd><p>Push a line to the interpreter.</p>
-<dl class="docutils">
-<dt>Arguments:</dt>
-<dd>line - String to be processed.</dd>
-</dl>
+<dt id="markingpy.compiler.Compiler.handle_compile_exception">
+<code class="descname">handle_compile_exception</code><span class="sig-paren">(</span><em>err</em>, <em>chunk</em><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.compiler.Compiler.handle_compile_exception" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle an exception raised during compilation.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="markingpy.compiler.Compiler.reset_buffer">
-<code class="descname">reset_buffer</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.compiler.Compiler.reset_buffer" title="Permalink to this definition">¶</a></dt>
-<dd><p>Reset the input buffer.</p>
+<dt id="markingpy.compiler.Compiler.remove_line">
+<code class="descname">remove_line</code><span class="sig-paren">(</span><em>chunk</em>, <em>lineno</em>, <em>reason</em><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.compiler.Compiler.remove_line" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a line from the source.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="markingpy.compiler.Compiler.write">
-<code class="descname">write</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.compiler.Compiler.write" title="Permalink to this definition">¶</a></dt>
-<dd><p>Write compilation errors to the internal buffer.</p>
-<dl class="docutils">
-<dt>Arguments:</dt>
-<dd>data - string data to write.</dd>
-</dl>
+<dt id="markingpy.compiler.Compiler.try_compile">
+<code class="descname">try_compile</code><span class="sig-paren">(</span><em>chunk</em><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.compiler.Compiler.try_compile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Try compiling a chunk.</p>
 </dd></dl>
 
 </dd></dl>
@@ -170,7 +156,7 @@ will not be contained in the locals.</p>
 
 <dl class="function">
 <dt id="markingpy.linter.linter">
-<code class="descclassname">markingpy.linter.</code><code class="descname">linter</code><span class="sig-paren">(</span><em>file</em><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.linter.linter" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">markingpy.linter.</code><code class="descname">linter</code><span class="sig-paren">(</span><em>submission</em><span class="sig-paren">)</span><a class="headerlink" href="#markingpy.linter.linter" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run the linter and generate a report for the submission.</p>
 </dd></dl>
 

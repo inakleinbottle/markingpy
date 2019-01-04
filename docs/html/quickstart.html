@@ -66,12 +66,18 @@ For example, a submission to be tested by the above might contain:</p>
 <div class="section" id="the-command-line-tool">
 <h2>The command line tool<a class="headerlink" href="#the-command-line-tool" title="Permalink to this headline">¶</a></h2>
 <p>The command line is the main method for running the grader. The main arguments are the marking scheme, which should be a python file, and a directory containing the submissons. There program has various output options:</p>
-<blockquote>
-<div><ul class="simple">
-<li><em>–csv CSV</em> Output the results to a CSV file;</li>
-<li><em>–output DIR</em> Output per-submission feedback as files in DIR.</li>
-</ul>
-</div></blockquote>
+<table class="docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group">
+<kbd><span class="option">--csv <var>CSV</var></span></kbd></td>
+<td>Output the results to a CSV file;</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--output <var>DIR</var></span></kbd></td>
+<td>Output per-submission feedback as files in DIR.</td></tr>
+</tbody>
+</table>
 <p>For example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">markingpy</span> <span class="o">--</span><span class="n">output</span> <span class="o">.</span> <span class="n">scheme</span><span class="o">.</span><span class="n">py</span> <span class="n">submissions</span>
 </pre></div>

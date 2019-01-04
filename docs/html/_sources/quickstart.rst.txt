@@ -36,8 +36,8 @@ The command line tool
 ---------------------
 The command line is the main method for running the grader. The main arguments are the marking scheme, which should be a python file, and a directory containing the submissons. There program has various output options:
 
- - *--csv CSV* Output the results to a CSV file;
- - *--output DIR* Output per-submission feedback as files in DIR. 
+--csv CSV       Output the results to a CSV file;
+--output DIR    Output per-submission feedback as files in DIR. 
 
 For example::
 

@@ -62,27 +62,123 @@ For example, if the work contains two exercises, then the marking scheme might c
 
 <span class="k">class</span> <span class="nc">Exercise2</span><span class="p">(</span><span class="n">Exercise</span><span class="p">):</span>
 
-
     <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;ex2_func&#39;</span><span class="p">]</span>
 
-
     <span class="k">def</span> <span class="nf">test_ex2_func_1</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Description of test one.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Description of test one&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">ex2_func</span><span class="p">(),</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0e-5</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">test_ex2_func_1</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Description of second test.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Description of second test&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">assertNotEqual</span><span class="p">(</span><span class="n">ex2_func</span><span class="p">(),</span> <span class="mf">1.0</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 <div class="section" id="assertions">
 <h2>Assertions<a class="headerlink" href="#assertions" title="Permalink to this headline">¶</a></h2>
-<p>The mechanism for determining whether a test is a success or fail is determined by a series of assertions in each test.</p>
+<p>The mechanism for determining whether a test is a success or fail is determined by a series of assertions in each test. Since the Exercise class is derived from the <cite>unittest.TestCase</cite> class from the standard library, all of the assertions available in the unittest library are can be used for exercises.</p>
+<p>The basic tests correspond to the elementary equality and instance checking in Python.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="53%" />
+<col width="47%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><strong>Method</strong></td>
+<td><strong>Checks</strong></td>
+</tr>
+<tr class="row-even"><td>assertEqual(a,b)</td>
+<td><cite>a == b</cite></td>
+</tr>
+<tr class="row-odd"><td>assertNotequal(a,b)</td>
+<td><cite>a != b</cite></td>
+</tr>
+<tr class="row-even"><td>assertTrue(x)</td>
+<td><cite>bool(x) is True</cite></td>
+</tr>
+<tr class="row-odd"><td>assertFalse(x)</td>
+<td><cite>bool(x) is False</cite></td>
+</tr>
+<tr class="row-even"><td>assertIs(a, b)</td>
+<td><cite>a is b</cite></td>
+</tr>
+<tr class="row-odd"><td>assertNot(a, b)</td>
+<td><cite>a is not b</cite></td>
+</tr>
+<tr class="row-even"><td>assertIsNone(x)</td>
+<td><cite>x is None</cite></td>
+</tr>
+<tr class="row-odd"><td>assertIsNotNone(x)</td>
+<td><cite>x is not None</cite></td>
+</tr>
+<tr class="row-even"><td>assertIn(a, b)</td>
+<td><cite>a in b</cite></td>
+</tr>
+<tr class="row-odd"><td>assertNotIn(a, b)</td>
+<td><cite>a not in b</cite></td>
+</tr>
+<tr class="row-even"><td>assertIsInstance(a, b)</td>
+<td><cite>isinstance(a, b)</cite></td>
+</tr>
+<tr class="row-odd"><td>assertNotIsInstance(a, b)</td>
+<td><cite>not isinstance(a, b)</cite></td>
+</tr>
+</tbody>
+</table>
+<p>There are also assertions for less (equal) than and greater (equal) than comparision operators.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="52%" />
+<col width="48%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><strong>Method</strong></td>
+<td><strong>Checks</strong></td>
+</tr>
+<tr class="row-even"><td>assertGreater(a, b)</td>
+<td><cite>a &gt; b</cite></td>
+</tr>
+<tr class="row-odd"><td>assertGreaterEqual(a, b)</td>
+<td><cite>a &gt;= b</cite></td>
+</tr>
+<tr class="row-even"><td>assertLess(a, b)</td>
+<td><cite>a &lt; b</cite></td>
+</tr>
+<tr class="row-odd"><td>assertLessEqual(a, b)</td>
+<td><cite>a &lt;= b</cite></td>
+</tr>
+</tbody>
+</table>
+<p>There is also an <cite>assertAlmostEqual</cite> method, which tests that two numbers are equal to a given number of decimal places by computing the difference:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Exercise1</span><span class="p">(</span><span class="n">Exercise</span><span class="p">):</span>
+
+    <span class="n">names</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">test_almost_equal</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Test two numbers are almost equal&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.49999999</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To test that a function raises an exception, use the <cite>assertRaises</cite> method. The usage is slightly different from the above, in that the function and arguments should be passed to <cite>assertRaises</cite> as arguments:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Exercise1</span><span class="p">(</span><span class="n">Exercise</span><span class="p">):</span>
+
+    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;func&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">test_raises_error</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Test an exception is raised&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="ne">Exception</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">keyword</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Test case functions can contain arbitrary code. To fail a test without an assertion, the <cite>fail</cite> method can be used. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Exercise1</span><span class="p">(</span><span class="n">Exercise</span><span class="p">):</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;func&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">test_fail</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+         <span class="sd">&quot;&quot;&quot;Fail a test&quot;&quot;&quot;</span>
+         <span class="bp">self</span><span class="o">.</span><span class="n">fail</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="s1">&#39;You shall not pass!&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
 </div>
 </div>
 

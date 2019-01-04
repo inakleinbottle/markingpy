@@ -4,9 +4,7 @@ Helper module to compile files that might contain syntax errors.
 
 # Based on the Python Standard Library code module.
 
-import sys
-from code import InteractiveInterpreter
-from io import StringIO
+
 from collections import namedtuple, deque
 
 
@@ -14,6 +12,7 @@ Chunk = namedtuple('Chunk', ('line_start', 'line_end', 'content'))
 Reason = namedtuple('Reason', ('removed_at', 'exc'))
 
 class RemovedChunk(Chunk):
+
 
     def __init__(self, *args, **kwargs):
         self.reasons = []
@@ -40,7 +39,7 @@ class RemovedChunk(Chunk):
             start = self.line_start
             end = other.line_end
         new_removed = RemovedChunk(start, end, content)
-        new_removed.add_reason(*list(set([*self.reasons, *other.reasons])))
+        new_removed.add_reason(*set([*self.reasons, *other.reasons]))
         return new_removed
 
     def get_first_error(self):
@@ -74,8 +73,6 @@ class Compiler:
     def __call__(self, source, *,
                  filename='<input>', mode='exec',
                  flags=0, dont_inherit=False, optimize=-1):
-        self.filename = filename
-        self.mode = mode
         return self.compile_source(source, filename, mode, flags,
                                    dont_inherit, optimize)
 
@@ -83,7 +80,6 @@ class Compiler:
         """
         Remove a line from the source.
         """
-        # self.report.append((lineno, reason))
         lines = chunk.content.splitlines()
         reason.lineno = chunk.line_start + lineno - 1
         self.removed += 1
@@ -148,4 +144,3 @@ class Compiler:
 
     def sort_chunks(self):
         self.chunks.sort(key=lambda c: c.line_start)
-        
