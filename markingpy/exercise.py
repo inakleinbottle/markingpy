@@ -90,7 +90,8 @@ class Test:
         :param result:
         :return:
         """
-        rv = [f'Ran {self.name}: {"Pass" if outcome else "Fail"}']
+        name = self.name.replace('_', ' ')
+        rv = [f'Ran {name}: {"Pass" if outcome else "Fail"}']
         if self.descr:
             rv.append(self.descr)
 
@@ -219,10 +220,14 @@ class Exercise:
         submission_fun = namespace.get(fn_name, None)
         logger.info(submission_fun)
         if submission_fun is not None:
+            feedback = [self.name]
+            if self.descr:
+                feedback.append(self.descr)
             results = [test(submission_fun) for test in self.tests]
-            feedback = [r.feedback for r in results]
+            feedback.extend(r.feedback for r in results)
             score = sum(r.mark for r in results)
             logger.info(f'Score for ex: {score} / {self.total_marks}')
+            feedback.append('')
 
             return ExerciseFeedback(score, self.total_marks,
                                     '\n'.join(feedback))

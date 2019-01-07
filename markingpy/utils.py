@@ -17,8 +17,10 @@ try:
 except ImportError:
     signal = None
 
+
 class RunTimeoutError(Exception):
     pass
+
 
 def time_exceeded():
     raise RunTimeoutError()
@@ -34,7 +36,8 @@ def build_style_calc(formula):
         except ZeroDivisionError:
             return 0.0
     return calculator
-    
+
+
 DEFAULT_STYLE_FORMULA = ('1. - float(5*error'
                          ' + warning'
                          ' + refactor'
@@ -42,10 +45,6 @@ DEFAULT_STYLE_FORMULA = ('1. - float(5*error'
                          ' / statement')
 default_style_calc = build_style_calc(DEFAULT_STYLE_FORMULA)
 
-def test_calculator(report):
-    all_tests = report.all_tests
-    return (len(list(filter(lambda t: t[0] == 'SUCCESS', all_tests)))
-            / len(all_tests))
 
 def time_run(func, args):
     """
@@ -85,3 +84,6 @@ if resource is not None and signal is not None:
             yield
         finally:
             resource.setrlimit(resource.RLIMIT_CPU, (soft, hard))
+
+else:
+    cpu_limit = None

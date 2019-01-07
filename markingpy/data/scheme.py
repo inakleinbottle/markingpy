@@ -11,7 +11,6 @@ mark_scheme(
     )
 
 
-
 # Exercises should be derived from the
 # Exercise class found in the markingpy module
 class Exercise1(Exercise):

@@ -98,10 +98,8 @@ class MarkingScheme:
                                           round(100*score/total_score))
 
     def patched_import(self):
-
         def patched(*args, **kwargs):
             pass
-
         return patched
 
     def run(self, submission):
