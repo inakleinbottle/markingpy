@@ -46,16 +46,18 @@ DEFAULT_STYLE_FORMULA = ('1. - float(5*error'
 default_style_calc = build_style_calc(DEFAULT_STYLE_FORMULA)
 
 
-def time_run(func, args):
+def time_run(func, args, kwargs):
     """
     Time the running of a function.
+
     :param func:
     :param args:
+    :param kwargs:
     :return:
     """
     start_time = time()
     try:
-        func(*args)
+        func(*args, **kwargs)
     except Exception as err:
         logger.error(err)
         return None

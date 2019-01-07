@@ -2,14 +2,11 @@
 Exercise building utilities.
 """
 import logging
-from io import StringIO
-from functools import wraps
-from unittest import TestCase, TestResult
-from contextlib import contextmanager, redirect_stdout
 from collections import namedtuple
-from types import new_class
+from functools import wraps
+from contextlib import contextmanager
 
-from .utils import time_run
+from .cases import Test, TimingTest, TimingCase
 
 logger = logging.getLogger(__name__)
 
@@ -58,76 +55,6 @@ class ExerciseError(Exception):
 
 
 TestFeedback = namedtuple('TestFeedback', ('test', 'mark', 'feedback'))
-
-
-class Test:
-
-    _test_no = 0
-
-    def __init__(self, test_func, name=None, marks=0, descr=None, **kwargs):
-        self._test_no += 1
-        self.test_func = test_func
-        self.name = name if name else self.get_name()
-        self.marks = marks
-        self.descr = descr
-
-    def get_name(self):
-        return self.test_func.__name__ + '_' + str(self._test_no)
-
-    def create_test(self, other):
-        """
-        Create a unittest testcase for this test.
-
-        :return: Unittest.TestCase.
-        """
-        test_case = new_class(self.name, (TestCase,))
-        test_case.runTest = self.test_func(other)
-        return test_case
-
-    def format_feedback(self, outcome, result, test_stdout):
-        """
-        Format the feedback of the test.
-        :param result:
-        :return:
-        """
-        name = self.name.replace('_', ' ')
-        rv = [f'Ran {name}: {"Pass" if outcome else "Fail"}']
-        if self.descr:
-            rv.append(self.descr)
-
-        rv.extend(INDENT + line for err in result.errors
-                  for line in err[1].strip().splitlines())
-        rv.extend(INDENT + line.strip()
-                  for line in test_stdout.getvalue().strip().splitlines())
-        return '\n'.join(rv)
-
-    def get_success(self, result):
-        """
-        Determine whether the test was successful
-        :param result:
-        :return:
-        """
-        success = result.wasSuccessful()
-        return success
-
-    def __call__(self, other):
-        """
-        Run test on specified other.
-        :param other: Function to run test against.
-        :return: Namedtuple containing Test, score, feedback
-        """
-        test = self.create_test(other)()
-        result = TestResult()
-        test_stdout = StringIO()
-        with redirect_stdout(test_stdout):
-            test.run(result)
-        outcome = self.get_success(result)
-        feedback = self.format_feedback(outcome, result, test_stdout)
-        marks = self.marks if outcome else 0
-        feedback += f'\n{INDENT}Marks: {marks}'
-        return TestFeedback(self, marks, feedback)
-
-
 ExerciseFeedback = namedtuple('Feedback', ('marks', 'total_marks', 'feedback'))
 
 
@@ -162,7 +89,7 @@ class Exercise:
     def total_marks(self):
         return sum(t.marks for t in self.tests)
 
-    def add_test_call(self, call_params=None, call_kwparams=None, **args):
+    def add_test_call(self, call_params=None, call_kwparams=None, **kwargs):
         """
         Add a call test to the exercise.
 
@@ -174,37 +101,39 @@ class Exercise:
         """
         call_params = call_params if call_params is not None else tuple()
         call_kwparams = call_kwparams if call_kwparams is not None else dict()
-        test = Test(new_test_equal(self, call_params, call_kwparams), **args)
+        test = Test(new_test_equal(self, call_params, call_kwparams),
+                    exercise=self, **kwargs)
         self.tests.append(test)
         return test
 
-    def timing_test(self, *cases, **args):
+    def timing_test(self, cases, tolerance=0.2, **kwargs):
         """
         Test the timing of a submission against the model.
 
         :param cases:
-        :param args:
+        :param tolerance:
         :return:
         """
-        try:
-            tolerance = args.pop('tolerance')
-        except KeyError:
-            tolerance = 0.1
+        if not all(isinstance(c, TimingCase) for c in cases):
+            raise ExerciseError('Variable cases must be an iterable containing'
+                                ' TimingCases')
         logger.info(f'Adding timing test with tolerance {tolerance}')
-        test = Test(new_timing_test(cases, tolerance), **args)
+        logger.info(kwargs)
+        test = TimingTest(cases, tolerance, exercise=self, **kwargs)
         self.tests.append(test)
         return test
 
-    def test(self, **args):
+    def test(self, *, cls=None, **kwargs):
         """
         Add a new test using an arbitrary
-        :param args:
+        :param cls:
         :return:
         """
+        if cls is None:
+            cls = Test
+
         def decorator(func):
-            if not 'name' in args:
-                args['name'] = func.__name__
-            test = Test(new_test_true(self, func), **args)
+            test = cls(func, exercise=self, **kwargs)
             self.tests.append(test)
             return test
         return decorator

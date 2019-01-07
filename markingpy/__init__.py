@@ -22,11 +22,11 @@ def load_config():
 
 GLOBAL_CONF = load_config()
 
-__all__ = ['Grader', 'GLOBAL_CONF', 'mark_scheme', 'exercise']
-
+__all__ = ['Grader', 'GLOBAL_CONF', 'mark_scheme', 'exercise',]
 from .grader import Grader
 from .exercise import exercise
 from .markscheme import mark_scheme
+from .cases import Test
 
 
 
