@@ -4,7 +4,7 @@ Helper module to compile files that might contain syntax errors.
 
 # Based on the Python Standard Library code module.
 
-
+from codeop import PyCF_DONT_IMPLY_DEDENT
 from collections import namedtuple, deque
 
 
@@ -105,7 +105,8 @@ class Compiler:
         Try compiling a chunk.
         """
         try:
-            compile(chunk.content, self.filename, self.mode, optimize=0)
+            compile(chunk.content, self.filename, self.mode, 
+                    PyCF_DONT_IMPLY_DEDENT, optimize=0)
             self.chunks.append(chunk)
         except SyntaxError as err:
             self.handle_compile_exception(err, chunk)

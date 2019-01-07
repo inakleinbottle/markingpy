@@ -189,6 +189,7 @@ class Exercise:
             tolerance = args.pop('tolerance')
         except KeyError:
             tolerance = 0.1
+        logger.info(f'Adding timing test with tolerance {tolerance}')
         test = Test(new_timing_test(cases, tolerance), **args)
         self.tests.append(test)
         return test
@@ -216,6 +217,7 @@ class Exercise:
         """
         fn_name = self.func.__name__
         submission_fun = namespace.get(fn_name, None)
+        logger.info(submission_fun)
         if submission_fun is not None:
             results = [test(submission_fun) for test in self.tests]
             feedback = [r.feedback for r in results]

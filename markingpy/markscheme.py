@@ -111,10 +111,9 @@ class MarkingScheme:
         :param submission: Submission to grade
         """
         code = submission.compile()
-        glbs = {}
         ns = {}
-        with replace_import(glbs, self.patched_import()):
-            exec(code, glbs, ns)
+        with replace_import(ns, self.patched_import()):
+            exec(code, ns)
 
         score = 0
         total_score = 0

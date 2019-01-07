@@ -17,9 +17,11 @@ try:
 except ImportError:
     signal = None
 
+class RunTimeoutError(Exception):
+    pass
 
 def time_exceeded():
-    raise TimeoutError()
+    raise RunTimeoutError()
 
 
 def build_style_calc(formula):
@@ -27,7 +29,10 @@ def build_style_calc(formula):
     Build a style calculator by providing a formula
     """
     def calculator(report):
-        return max(0.0, eval(formula, report.stats))
+        try:
+            return max(0.0, eval(formula, report.stats))
+        except ZeroDivisionError:
+            return 0.0
     return calculator
     
 DEFAULT_STYLE_FORMULA = ('1. - float(5*error'

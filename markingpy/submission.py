@@ -28,7 +28,8 @@ class Submission:
         if not self.code:
             self.code = self.compiler(self.source)
             self.add_feedback('compilation',
-                              '\n'.join(self.compiler.removed_chunks))
+                              '\n'.join((c.content + '\n' + repr(c.get_first_error().exc)
+                                        for c in self.compiler.removed_chunks)))
         return self.code
 
     def add_feedback(self, item, feedback):
