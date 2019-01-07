@@ -3,10 +3,10 @@ import logging
 import warnings
 from contextlib import contextmanager
 
-from markingpy import GLOBAL_CONF
+from .config import GLOBAL_CONF
 from .exercise import Exercise
 from .linter import linter
-from .utils import build_style_calc
+from .utils import build_style_calc, log_calls
 
 
 logger = logging.getLogger(__name__)
@@ -14,14 +14,14 @@ logger = logging.getLogger(__name__)
 
 def mark_scheme(**params):
     """
-    Create a marking scheme config object.
+    Create a marking scheme config.py object.
 
     :param params:
     :return:
     """
     return MarkschemeConfig(**params)
 
-
+@log_calls
 def import_markscheme(path):
     """
     Import the marking scheme from path.
@@ -48,15 +48,6 @@ class MarkschemeConfig:
 
     def __init__(self, **kwargs):
         self.config = kwargs
-
-
-@contextmanager
-def replace_import(glbs, func):
-    logger.debug('Patching import')
-    try:
-        yield
-    finally:
-        pass
 
 
 class MarkingScheme:
@@ -102,6 +93,14 @@ class MarkingScheme:
             pass
         return patched
 
+    @contextmanager
+    def sandbox(self, ns):
+        try:
+            yield
+        finally:
+            pass
+
+    @log_calls
     def run(self, submission):
         """
         Grade a submission.
@@ -110,7 +109,7 @@ class MarkingScheme:
         """
         code = submission.compile()
         ns = {}
-        with replace_import(ns, self.patched_import()):
+        with self.sandbox(ns):
             exec(code, ns)
 
         score = 0
@@ -125,14 +124,10 @@ class MarkingScheme:
 
         lint_report = self.linter(submission)
 
-        style_prop = self.style_calc(lint_report)
-        logger.info(f'Style proportion: {style_prop}')
         style_score = round(self.style_calc(lint_report)*self.style_marks)
         score += style_score
         total_score += self.style_marks
         submission.add_feedback('style', lint_report.read())
-        logger.info(f'Style marks: {style_score}')
-        logger.info(f'{submission.reference}: {score}')
 
         submission.score = self.format_return(score, total_score)
 

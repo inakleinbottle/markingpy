@@ -2,7 +2,8 @@ import os
 import logging
 
 
-from markingpy.compiler import Compiler
+from .compiler import Compiler
+from .utils import log_calls
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ class Submission:
         self.score = None
         self.feedback = {}
 
+    @log_calls
     def compile(self):
         """
         Compile the submission source code.
@@ -38,6 +40,7 @@ class Submission:
             self.add_feedback('compilation', feedback)
         return self.code
 
+    @log_calls
     def add_feedback(self, item, feedback):
         """
         Add feedback to the submission.

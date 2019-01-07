@@ -8,6 +8,8 @@ from io import StringIO
 from types import new_class
 from unittest import TestCase, TestResult
 
+from .utils import log_calls
+
 logger = logging.getLogger(__name__)
 
 
@@ -110,6 +112,7 @@ class CallTest(BaseTest):
         self.call_args = call_args
         self.call_kwargs = call_kwargs
 
+    @log_calls
     def create_test(self, other):
         equal_test = self.exercise(*self.call_args, **self.call_kwargs)
 
@@ -132,6 +135,7 @@ class TimingTest(BaseTest):
         self.cases = cases
         self.tolerance = tolerance
 
+    @log_calls
     def create_test(self, other):
         from markingpy.utils import time_run
         tolerance = self.tolerance
@@ -157,6 +161,7 @@ class Test(BaseTest):
     def get_name(self):
         return self.test_func.__name__
 
+    @log_calls
     def create_test(self, other):
         test_func = self.test_func
         exercise = self.exercise

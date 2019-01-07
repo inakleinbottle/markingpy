@@ -3,6 +3,7 @@ Utilities for the MarkingPy package.
 """
 import logging
 from contextlib import contextmanager
+from inspect import isfunction
 from time import time
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,33 @@ try:
     import signal
 except ImportError:
     signal = None
+
+
+def log_calls(level=None):
+    if isfunction(level):
+        fn = level
+        level = logging.DEBUG
+    else:
+        fn = None
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            msg = 'Call {}('.format(func.__name__) + ', '.join(args)
+            if args and kwargs:
+                msg += ', '
+            msg += ', '.join('{}={}'.format(k, v) for k, v in kwargs.items())
+            msg += ')'
+            logger.log(level, msg)
+            return func(*args, **kwargs)
+        return wrapper
+
+    if fn is not None:
+        return decorator(fn)
+    else:
+        return decorator
+
+
 
 
 class RunTimeoutError(Exception):

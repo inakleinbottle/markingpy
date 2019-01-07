@@ -6,55 +6,18 @@ from collections import namedtuple
 from functools import wraps
 from contextlib import contextmanager
 
-from .cases import Test, TimingTest, TimingCase
+from .cases import Test, TimingTest, TimingCase, CallTest
+from .utils import log_calls
 
 logger = logging.getLogger(__name__)
 
 INDENT = ' '*4
 
 
-def new_test_equal(model, call_args, call_kwargs):
-    def tester(other):
-        def test_method(self):
-            self.assertEqual(other(*call_args, **call_kwargs),
-                             model(*call_args, **call_kwargs))
-        return test_method
-    return tester
-
-
-def new_test_true(ex, test_func):
-    @wraps(test_func)
-    def tester(other):
-        def test_method(self):
-            with ex.set_function(other):
-                output = test_func()
-            if isinstance(output, bool):
-                self.assertTrue(output)
-            elif isinstance(output, tuple):
-                outcome, feedback = output
-                self.assertTrue(outcome)
-        return test_method
-    return tester
-
-
-def new_timing_test(cases, tolerance):
-    def tester(other):
-        def test_method(self):
-            for cs, target in cases:
-                runtime = time_run(other, cs)
-                if runtime is None:
-                    self.fail(msg='Execution failed')
-                self.assertLessEqual(runtime, (1.0 + tolerance)*target)
-
-        return test_method
-    return tester
-
-
 class ExerciseError(Exception):
     pass
 
 
-TestFeedback = namedtuple('TestFeedback', ('test', 'mark', 'feedback'))
 ExerciseFeedback = namedtuple('Feedback', ('marks', 'total_marks', 'feedback'))
 
 
@@ -89,6 +52,7 @@ class Exercise:
     def total_marks(self):
         return sum(t.marks for t in self.tests)
 
+    @log_calls
     def add_test_call(self, call_params=None, call_kwparams=None, **kwargs):
         """
         Add a call test to the exercise.
@@ -101,11 +65,11 @@ class Exercise:
         """
         call_params = call_params if call_params is not None else tuple()
         call_kwparams = call_kwparams if call_kwparams is not None else dict()
-        test = Test(new_test_equal(self, call_params, call_kwparams),
-                    exercise=self, **kwargs)
+        test = CallTest(call_params, call_kwparams, exercise=self, **kwargs)
         self.tests.append(test)
         return test
 
+    @log_calls
     def timing_test(self, cases, tolerance=0.2, **kwargs):
         """
         Test the timing of a submission against the model.
@@ -123,6 +87,7 @@ class Exercise:
         self.tests.append(test)
         return test
 
+    @log_calls
     def test(self, *, cls=None, **kwargs):
         """
         Add a new test using an arbitrary
@@ -138,6 +103,7 @@ class Exercise:
             return test
         return decorator
 
+    @log_calls
     def run(self, namespace):
         """
         Run the test suite on submission.
