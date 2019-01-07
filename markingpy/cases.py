@@ -30,6 +30,9 @@ class BaseTest(ABC):
         self.name = name
         self.descr = descr
         self.marks = marks
+        
+    def get_name(self):
+        return str(self.__class__)
 
     def __getattribute__(self, item):
         getter = object.__getattribute__
@@ -45,6 +48,7 @@ class BaseTest(ABC):
             and attr is None
             and hasattr(self, 'get_' + item)):
                 attr = getter(self, 'get_' + item)()
+                setattr(self, item, attr)
         return attr
 
     def __str__(self):
@@ -114,12 +118,13 @@ class CallTest(BaseTest):
 
     @log_calls
     def create_test(self, other):
-        equal_test = self.exercise(*self.call_args, **self.call_kwargs)
+        call_args, call_kwargs = self.call_args, self.call_kwargs
+        equal_test = self.exercise(*call_args, **call_kwargs)
 
         def tester(self):
             self.assertEqual(equal_test,
-                             other(*self.call_args,
-                                   **self.call_kwargs))
+                             other(*call_args,
+                                   **call_kwargs))
         cls = new_class(self.name, (self.test_class,))
         cls.runTest = tester
         return cls()

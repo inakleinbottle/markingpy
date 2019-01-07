@@ -4,7 +4,8 @@ import sys
 from argparse import ArgumentParser
 from os.path import exists as pathexists
 
-from markingpy import Grader, GLOBAL_CONF
+from .config import GLOBAL_CONF
+from .grader import Grader
 
 
 class CLIError(Exception):

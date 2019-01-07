@@ -103,7 +103,6 @@ class Exercise:
             return test
         return decorator
 
-    @log_calls
     def run(self, namespace):
         """
         Run the test suite on submission.

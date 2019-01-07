@@ -3,6 +3,7 @@ Utilities for the MarkingPy package.
 """
 import logging
 from contextlib import contextmanager
+from functools import wraps
 from inspect import isfunction
 from time import time
 
@@ -29,7 +30,7 @@ def log_calls(level=None):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            msg = 'Call {}('.format(func.__name__) + ', '.join(args)
+            msg = 'Call {}('.format(func.__name__) + ', '.join(map(str, args))
             if args and kwargs:
                 msg += ', '
             msg += ', '.join('{}={}'.format(k, v) for k, v in kwargs.items())

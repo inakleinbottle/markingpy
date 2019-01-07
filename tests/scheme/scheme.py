@@ -3,6 +3,7 @@ from io import StringIO
 
 from markingpy import mark_scheme, exercise
 from markingpy.utils import time_run
+from markingpy.cases import TimingCase
 
 
 ms = mark_scheme(style_marks=20,
@@ -23,7 +24,7 @@ add.add_test_call((-1, 2), marks=1)
 add.add_test_call((2, 4), marks=1)
 
 cases = [(1, 1), (100, 100), (1000, 1000)]
-add.timing_test(*((cs, time_run(add, cs)) for cs in cases),
+add.timing_test((TimingCase(cs, {}, time_run(add, cs, {})) for cs in cases),
                 tolerance=.2,
                 marks=2)
 

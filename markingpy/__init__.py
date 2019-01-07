@@ -8,7 +8,7 @@ from .markscheme import mark_scheme
 from .cases import Test
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 __all__ = ['Grader', 'mark_scheme', 'exercise',]
