@@ -29,8 +29,6 @@ def linter(submission):
     """
     Run the linter and generate a report for the submission.
     """
-    
-
     report = LinterReport()
     linter = PyLinter()
     linter.load_default_plugins()

@@ -1,11 +1,15 @@
 
 import logging
 import warnings
+from contextlib import contextmanager
 
 from markingpy import GLOBAL_CONF
 from .exercise import Exercise
 from .linter import linter
 from .utils import build_style_calc
+
+
+logger = logging.getLogger(__name__)
 
 
 def mark_scheme(**params):
@@ -46,6 +50,15 @@ class MarkschemeConfig:
         self.config = kwargs
 
 
+@contextmanager
+def replace_import(glbs, func):
+    logger.debug('Patching import')
+    try:
+        yield
+    finally:
+        pass
+
+
 class MarkingScheme:
     """
     Marking scheme class.
@@ -84,16 +97,29 @@ class MarkingScheme:
             return '{} / {} ({}%)'.format(score, total_score,
                                           round(100*score/total_score))
 
+    def patched_import(self):
+
+        def patched(*args, **kwargs):
+            pass
+
+        return patched
+
     def run(self, submission):
         """
         Grade a submission.
 
         :param submission: Submission to grade
         """
+        code = submission.compile()
+        glbs = {}
+        ns = {}
+        with replace_import(glbs, self.patched_import()):
+            exec(code, glbs, ns)
+
         score = 0
         total_score = 0
         report = []
-        for mark, total_marks, feedback in (ex.run(submission.globals)
+        for mark, total_marks, feedback in (ex.run(ns)
                                             for ex in self.exercises):
             score += mark
             total_score += total_marks
@@ -101,9 +127,15 @@ class MarkingScheme:
         submission.add_feedback('tests', '\n'.join(report))
 
         lint_report = self.linter(submission)
-        score += round(self.style_calc(lint_report)*self.style_marks)
+
+        style_prop = self.style_calc(lint_report)
+        logger.info(f'Style proportion: {style_prop}')
+        style_score = round(self.style_calc(lint_report)*self.style_marks)
+        score += style_score
         total_score += self.style_marks
         submission.add_feedback('style', lint_report.read())
+        logger.info(f'Style marks: {style_score}')
+        logger.info(f'{submission.reference}: {score}')
 
         submission.score = self.format_return(score, total_score)
 

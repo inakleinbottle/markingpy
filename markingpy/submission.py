@@ -16,25 +16,20 @@ class Submission:
         with open(path, 'r') as f:
             self.source = f.read()
         self.reference = os.path.splitext(os.path.basename(path))[0]
-        self.globals = {}
         self.compiler = Compiler()
-        self.compiled = False
+        self.code = None
         self.score = None
         self.feedback = {}
-
-    def set_score(self, score):
-        self.score = score
 
     def compile(self):
         """
         Compile the submission source code.
         """
-        if not self.compiled:
-            code = self.compiler(self.source)
-            exec(code, self.globals)
+        if not self.code:
+            self.code = self.compiler(self.source)
             self.add_feedback('compilation',
                               '\n'.join(self.compiler.removed_chunks))
-            self.compiled = True
+        return self.code
 
     def add_feedback(self, item, feedback):
         """

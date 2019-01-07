@@ -2,9 +2,10 @@
 Exercise building utilities.
 """
 import logging
+from io import StringIO
 from functools import wraps
 from unittest import TestCase, TestResult
-from unittest.mock import patch as patch
+from contextlib import contextmanager, redirect_stdout
 from collections import namedtuple
 from types import new_class
 
@@ -24,12 +25,12 @@ def new_test_equal(model, call_args, call_kwargs):
     return tester
 
 
-def new_test_true(func_name, test_func):
+def new_test_true(ex, test_func):
+    @wraps(test_func)
     def tester(other):
         def test_method(self):
-            # with patch(test_func.__module__ + '.' + func_name, other):
-            test_func.__globals__[func_name] = other
-            output = test_func()
+            with ex.set_function(other):
+                output = test_func()
             if isinstance(output, bool):
                 self.assertTrue(output)
             elif isinstance(output, tuple):
@@ -61,11 +62,17 @@ TestFeedback = namedtuple('TestFeedback', ('test', 'mark', 'feedback'))
 
 class Test:
 
-    def __init__(self, name, test_func, marks, descr=None, **kwargs):
-        self.name = name
-        self.marks = marks
+    _test_no = 0
+
+    def __init__(self, test_func, name=None, marks=0, descr=None, **kwargs):
+        self._test_no += 1
         self.test_func = test_func
+        self.name = name if name else self.get_name()
+        self.marks = marks
         self.descr = descr
+
+    def get_name(self):
+        return self.test_func.__name__ + '_' + str(self._test_no)
 
     def create_test(self, other):
         """
@@ -77,18 +84,20 @@ class Test:
         test_case.runTest = self.test_func(other)
         return test_case
 
-    def format_feedback(self, result):
+    def format_feedback(self, outcome, result, test_stdout):
         """
         Format the feedback of the test.
         :param result:
         :return:
         """
-        outcome, feedback = self.get_success(result)
         rv = [f'Ran {self.name}: {"Pass" if outcome else "Fail"}']
         if self.descr:
-            rv.append(INDENT + self.descr)
-        for fb in feedback:
-            rv.append(INDENT + fb)
+            rv.append(self.descr)
+
+        rv.extend(INDENT + line for err in result.errors
+                  for line in err[1].strip().splitlines())
+        rv.extend(INDENT + line.strip()
+                  for line in test_stdout.getvalue().strip().splitlines())
         return '\n'.join(rv)
 
     def get_success(self, result):
@@ -97,12 +106,8 @@ class Test:
         :param result:
         :return:
         """
-        feedback = []
         success = result.wasSuccessful()
-        if not success:
-            for err in result.errors:
-                feedback.append(err[1])
-        return success, feedback
+        return success
 
     def __call__(self, other):
         """
@@ -112,9 +117,14 @@ class Test:
         """
         test = self.create_test(other)()
         result = TestResult()
-        test.run(result)
-        feedback = self.format_feedback(result)
-        return TestFeedback(self, self.marks, feedback)
+        test_stdout = StringIO()
+        with redirect_stdout(test_stdout):
+            test.run(result)
+        outcome = self.get_success(result)
+        feedback = self.format_feedback(outcome, result, test_stdout)
+        marks = self.marks if outcome else 0
+        feedback += f'\n{INDENT}Marks: {marks}'
+        return TestFeedback(self, marks, feedback)
 
 
 ExerciseFeedback = namedtuple('Feedback', ('marks', 'total_marks', 'feedback'))
@@ -122,15 +132,30 @@ ExerciseFeedback = namedtuple('Feedback', ('marks', 'total_marks', 'feedback'))
 
 class Exercise:
 
-    def __init__(self, func, **args):
+    _ex_no = 0
+
+    def __init__(self, func, name=None, descr=None, **args):
+        self._ex_no += 1
         wraps(func)(self)
         self.tests = []
         self.num_tests = 0
-        self.func = func
-        self.name = func.__name__
+        self.func = self.exc_func = func
+        self.name = name if name else self.get_name()
+        self.descr = descr
+
+    def get_name(self):
+        return 'Exercise {0._ex_no}: {0.func.__name__}'.format(self)
 
     def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
+        return self.exc_func(*args, **kwargs)
+
+    @contextmanager
+    def set_function(self, other):
+        self.exc_func = other
+        try:
+            yield
+        finally:
+            self.exc_func = self.func
 
     @property
     def total_marks(self):
@@ -148,9 +173,7 @@ class Exercise:
         """
         call_params = call_params if call_params is not None else tuple()
         call_kwparams = call_kwparams if call_kwparams is not None else dict()
-        self.num_tests += 1
-        name = self.name + str(self.num_tests)
-        test = Test(name, new_test_equal(self, call_params, call_kwparams), **args)
+        test = Test(new_test_equal(self, call_params, call_kwparams), **args)
         self.tests.append(test)
         return test
 
@@ -162,13 +185,11 @@ class Exercise:
         :param args:
         :return:
         """
-        self.num_tests += 1
-        name = self.name + str(self.num_tests)
         try:
             tolerance = args.pop('tolerance')
         except KeyError:
             tolerance = 0.1
-        test = Test(name, new_timing_test(cases, tolerance), **args)
+        test = Test(new_timing_test(cases, tolerance), **args)
         self.tests.append(test)
         return test
 
@@ -179,7 +200,9 @@ class Exercise:
         :return:
         """
         def decorator(func):
-            test = Test(func.__name__, new_test_true(self.name, func), **args)
+            if not 'name' in args:
+                args['name'] = func.__name__
+            test = Test(new_test_true(self, func), **args)
             self.tests.append(test)
             return test
         return decorator
@@ -191,17 +214,19 @@ class Exercise:
         :param namespace: submission object
         :return: namedtuple containing marks, total_marks, feedback
         """
-        submission_fun = namespace.get(self.name, None)
+        fn_name = self.func.__name__
+        submission_fun = namespace.get(fn_name, None)
         if submission_fun is not None:
             results = [test(submission_fun) for test in self.tests]
             feedback = [r.feedback for r in results]
             score = sum(r.mark for r in results)
+            logger.info(f'Score for ex: {score} / {self.total_marks}')
 
             return ExerciseFeedback(score, self.total_marks,
                                     '\n'.join(feedback))
         else:
             msg = 'Function {} was not found in submission.'
-            return ExerciseFeedback(0, self.total_marks, [msg.format(self.name)])
+            return ExerciseFeedback(0, self.total_marks, msg.format(self.name))
 
 
 def exercise(**args):

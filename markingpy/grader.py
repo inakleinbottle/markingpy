@@ -37,7 +37,6 @@ class Grader:
         """
         Run the grader tests on a submission.
         """
-        submission.compile()
         self.markscheme.run(submission)
 
     def dump_to_csv(self, path):
