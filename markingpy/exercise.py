@@ -12,7 +12,7 @@ from .utils import log_calls
 
 logger = logging.getLogger(__name__)
 
-INDENT = ' '*4
+INDENT = ' ' * 4
 
 
 class ExerciseError(Exception):
@@ -44,6 +44,12 @@ class Exercise:
         self.func = self.exc_func = function_or_class
         self.name = name if name else self.get_name()
         self.descr = descr
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return '{0.__class__.__name__}(0.func.__name__)'.format(self)
 
     def get_name(self):
         return 'Exercise {0._ex_no}: {0.func.__name__}'.format(self)
@@ -99,20 +105,52 @@ class Exercise:
         return test
 
     @log_calls
-    def test(self, *, cls=None, **kwargs):
+    def add_test(self, function, name=None, cls=None, **params):
         """
-        Add a new test using an arbitrary
-        :param cls:
-        :return:
+        Add a new test to the exercise. The function should return
+        True for a successful test and False for a failed test.
+
+        Keyword parameters are passed to the Test instance.
+
+        :param function: Test function to add
+        :param name: Name for the test. Defaults to name of the function.
+        :param cls: Class to instantiate. Defaults to `markingpy.cases.Test`
+        :return: Test instance
+        """
+        test = cls(function, exercise=self, name=name, **params)
+        self.tests.append(test)
+        return test
+
+    @log_calls
+    def test(self, name=None, cls=None, **kwargs):
+        """
+        Add a new test to the exercise by decorating a function. The function
+        should return `True` for a successful test and `False` for a failed test.
+        Printed statements used in the function will be added to the feedback
+        for the submission.
+
+        Equivalent to creating a function `func` and running
+        `ex.add_test(func)`.
+
+        :param name: Name for the test. Defaults to name of the function.
+        :param cls: Class to instantiate. Defaults to `markingpy.cases.Test`.
         """
         if cls is None:
             cls = Test
+
+        if isinstance(name, str):
+            kwargs['name'] = name
+            name = None
 
         def decorator(func):
             test = cls(func, exercise=self, **kwargs)
             self.tests.append(test)
             return test
-        return decorator
+
+        if name is None:
+            return decorator
+        elif isfunction(name):
+            return decorator(name)
 
     def run(self, namespace):
         """
@@ -141,7 +179,7 @@ class Exercise:
             return ExerciseFeedback(0, self.total_marks, msg.format(self.name))
 
 
-def exercise(function_or_class=None, cls=None, **args):
+def exercise(name=None, cls=None, **args):
     """
     Create a new exercise using this function or class as the model solution.
 
@@ -150,10 +188,15 @@ def exercise(function_or_class=None, cls=None, **args):
 
     Keyword arguments are forwarded to the Exercise instance.
 
+    :param name: Name for the exercise.
     :param cls: The exercise class to be instantiated.
     """
     if cls is None:
         cls = Exercise
+
+    if isinstance(name, str):
+        args['name'] = name
+        name = None
 
     def decorator(fn):
         if isclass(fn):
@@ -163,9 +206,7 @@ def exercise(function_or_class=None, cls=None, **args):
         else:
             raise TypeError('Expecting function or class.')
 
-    if function_or_class is None:
+    if name is None:
         return decorator
     else:
-        return decorator(function_or_class)
-
-
+        return decorator(name)

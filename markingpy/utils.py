@@ -45,8 +45,6 @@ def log_calls(level=None):
         return decorator
 
 
-
-
 class RunTimeoutError(Exception):
     pass
 
@@ -90,7 +88,9 @@ def time_run(func, args, kwargs):
     except Exception as err:
         logger.error(err)
         return None
-    return time() - start_time
+    runtime = time() - start_time
+    logger.debug(f'Timed run {func.__name__}: {runtime}')
+    return runtime
 
 
 if resource is not None and signal is not None:
