@@ -5,6 +5,7 @@ import logging
 from collections import namedtuple
 from functools import wraps
 from contextlib import contextmanager
+from inspect import isfunction, isclass
 
 from .cases import Test, TimingTest, TimingCase, CallTest
 from .utils import log_calls
@@ -22,15 +23,25 @@ ExerciseFeedback = namedtuple('Feedback', ('marks', 'total_marks', 'feedback'))
 
 
 class Exercise:
+    """
+    Exercises are the main objects in a marking scheme file. These will be used
+    to test each submission to construct the final mark and feedback. Each
+    exercise object holds a number of tests to be run, which constitute the
+    grading criteria for the exercise.
+
+    :param function_or_class: Function or class to be wrapped.
+    :param name: Name of the test. Defaults to the name of function_or_class.
+    :param descr: Short description of the test to be printed in the feedback.
+    """
 
     _ex_no = 0
 
-    def __init__(self, func, name=None, descr=None, **args):
+    def __init__(self, function_or_class, name=None, descr=None, **args):
         self._ex_no += 1
-        wraps(func)(self)
+        wraps(function_or_class)(self)
         self.tests = []
         self.num_tests = 0
-        self.func = self.exc_func = func
+        self.func = self.exc_func = function_or_class
         self.name = name if name else self.get_name()
         self.descr = descr
 
@@ -130,12 +141,31 @@ class Exercise:
             return ExerciseFeedback(0, self.total_marks, msg.format(self.name))
 
 
-def exercise(**args):
+def exercise(function_or_class=None, cls=None, **args):
     """
-    Create a new exercise using this function as the model solution.
+    Create a new exercise using this function or class as the model solution.
+
+    The decorated function or class will be wrapped by an Exercise object that
+    behaves like the original object.
+
+    Keyword arguments are forwarded to the Exercise instance.
+
+    :param cls: The exercise class to be instantiated.
     """
-    def decorator(func):
-        return Exercise(func, **args)
-    return decorator
+    if cls is None:
+        cls = Exercise
+
+    def decorator(fn):
+        if isclass(fn):
+            raise NotImplementedError('This feature is not yet implemented')
+        elif isfunction(fn):
+            return cls(fn, **args)
+        else:
+            raise TypeError('Expecting function or class.')
+
+    if function_or_class is None:
+        return decorator
+    else:
+        return decorator(function_or_class)
 
 
