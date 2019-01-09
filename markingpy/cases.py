@@ -20,6 +20,13 @@ INDENT = ' '*4
 
 
 class BaseTest(ABC):
+    """
+    Abstract base class for Test components.
+
+    :param name: Name of the test. Defaults to the name of the class.
+    :param descr: Short description to be displayed in feedback.
+    :param marks: Marks to award for this component, default=0.
+    """
 
     _common_properties = ['name', 'descr', 'marks']
     result_class = TestResult
@@ -32,7 +39,7 @@ class BaseTest(ABC):
         self.marks = marks
         
     def get_name(self):
-        return str(self.__class__)
+        return self.__class__.__name__
 
     def __getattribute__(self, item):
         getter = object.__getattribute__
@@ -111,10 +118,10 @@ class BaseTest(ABC):
 
 class CallTest(BaseTest):
 
-    def __init__(self, call_args, call_kwargs, *args, **kwargs):
+    def __init__(self, call_args=None, call_kwargs=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.call_args = call_args
-        self.call_kwargs = call_kwargs
+        self.call_args = call_args if call_args else ()
+        self.call_kwargs = call_kwargs if call_kwargs else {}
 
     @log_calls
     def create_test(self, other):
@@ -134,6 +141,9 @@ TimingCase = namedtuple('TimingCase', ('call_args', 'call_kwargs', 'target'))
 
 
 class TimingTest(BaseTest):
+    """
+
+    """
 
     def __init__(self, cases, tolerance, *args, **kwargs):
         super().__init__(*args, **kwargs)

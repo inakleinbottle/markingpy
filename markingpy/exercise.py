@@ -29,6 +29,9 @@ class Exercise:
     exercise object holds a number of tests to be run, which constitute the
     grading criteria for the exercise.
 
+    The markingpy.exercise decorator is the preferred method for creating
+    instances of this class.
+
     :param function_or_class: Function or class to be wrapped.
     :param name: Name of the test. Defaults to the name of function_or_class.
     :param descr: Short description of the test to be printed in the feedback.
@@ -93,7 +96,6 @@ class Exercise:
 
         :param cases:
         :param tolerance:
-        :return:
         """
         if not all(isinstance(c, TimingCase) for c in cases):
             raise ExerciseError('Variable cases must be an iterable containing'

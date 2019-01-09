@@ -28,10 +28,10 @@ def run():
     config = GLOBAL_CONF
 
     parser = ArgumentParser()
-    parser.add_argument('submissions', default=None,
-                        help='The directory containing submission files')
     parser.add_argument('scheme', default=None,
                         help='The marking scheme for this submission')
+    parser.add_argument('submissions', default=None,
+                        help='The directory containing submission files')
     parser.add_argument('-c', '--csv', default=None,
                         help='Save submission grades to csv')
     parser.add_argument('-m', '--mail', action='store_true',
