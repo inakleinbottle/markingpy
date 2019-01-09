@@ -7,16 +7,12 @@ from markingpy.cases import CallTest, TimingTest, TimingCase, Test
 def null_decorator(f):
     return f
 
+
 class CallTestClassTests(unittest.TestCase):
 
     def setUp(self):
         exercise = self.exercise = mock.MagicMock(return_value='Success')
-        self.call_test = CallTest(exercise=exercise)
-
-        # disable call logger in tests
-        patcher = mock.patch('markingpy.utils.log_calls', null_decorator)
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        self.call_test = CallTest(None, None, exercise=exercise)
 
     def test_common_attributes_set(self):
         """Test that common Test attributes correctly defaulted."""
@@ -31,11 +27,8 @@ class CallTestClassTests(unittest.TestCase):
         self.assertEqual(self.call_test.call_kwargs, {})
 
     def test_create_test_method(self):
-        """Test that test case correctly constructed."""
-
-        def other():
-            return 'Success'
-
+        """Test that test case correctly constructed and ran."""
+        other = mock.MagicMock(return_value='Success')
         test = self.call_test.create_test(other)
 
         self.assertIsInstance(test, self.call_test.test_class)
@@ -43,8 +36,54 @@ class CallTestClassTests(unittest.TestCase):
             self.fail('Test should have a "runTest" method')
 
 
+class TimingTestClassTests(unittest.TestCase):
+
+    def setUp(self):
+        exercise = self.exercise = mock.MagicMock(return_value='Success')
+        self.timing_test = TimingTest((), 0.1, exercise=exercise)
+
+    def test_common_attributes_set(self):
+        """Test that common Test attributes correctly defaulted."""
+        self.assertIsNone(self.timing_test.descr)
+        self.assertEqual(self.timing_test.marks, 0)
+        self.assertEqual(self.timing_test.name, 'TimingTest')
+
+    def test_call_parameters_correct(self):
+        """Test that call parameters are correctly defaulted."""
+        pass
+
+    def test_create_test_method(self):
+        """Test that test case correctly constructed and ran."""
+
+        other = mock.MagicMock(return_value='Success')
+        test = self.timing_test.create_test(other)
+        self.assertIsInstance(test, self.timing_test.test_class)
+        if not hasattr(test, 'runTest'):
+            self.fail('Test should have a "runTest" method')
 
 
+class GenericTestClassTests(unittest.TestCase):
+
+    def setUp(self):
+        exercise = self.exercise = mock.MagicMock(return_value='Success')
+        test_func = self.test_func = mock.MagicMock()
+        test_func.__name__ = 'test_func'
+        self.test = Test(test_func, exercise=exercise)
+
+    def test_common_attributes_set(self):
+        """Test that common Test attributes correctly defaulted."""
+        self.assertIsNone(self.test.descr)
+        self.assertEqual(self.test.marks, 0)
+        self.assertEqual(self.test.name, 'test_func')
+
+    def test_create_test_method(self):
+        """Test that test case correctly constructed and ran."""
+
+        other = mock.MagicMock(return_value='Success')
+        test = self.test.create_test(other)
+        self.assertIsInstance(test, self.test.test_class)
+        if not hasattr(test, 'runTest'):
+            self.fail('Test should have a "runTest" method')
 
 
 

@@ -21,6 +21,7 @@ def mark_scheme(**params):
     """
     return MarkschemeConfig(**params)
 
+
 @log_calls
 def import_markscheme(path):
     """

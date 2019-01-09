@@ -3,12 +3,13 @@ import logging
 
 from abc import ABC, abstractmethod
 from collections import namedtuple
+from collections.abc import Iterable, Mapping
 from contextlib import redirect_stdout
 from io import StringIO
 from types import new_class
 from unittest import TestCase, TestResult
 
-from .utils import log_calls
+from .utils import log_calls, time_run
 
 logger = logging.getLogger(__name__)
 
@@ -118,20 +119,46 @@ class BaseTest(ABC):
 
 class CallTest(BaseTest):
 
-    def __init__(self, call_args=None, call_kwargs=None, *args, **kwargs):
+    def __init__(self, call_args, call_kwargs, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.call_args = call_args if call_args else ()
-        self.call_kwargs = call_kwargs if call_kwargs else {}
+        self.call_args = call_args
+        self.call_kwargs = call_kwargs
+
+    @property
+    def call_args(self):
+        return self._call_args
+
+    @call_args.setter
+    def call_args(self, call_args):
+        if call_args is None:
+            self._call_args = ()
+        elif isinstance(call_args, Iterable):
+            self._call_args = tuple(call_args)
+        else:
+            self._call_args = (call_args,)
+
+    @property
+    def call_kwargs(self):
+        return self._call_kwargs
+
+    @call_kwargs.setter
+    def call_kwargs(self, call_kwargs):
+        if call_kwargs is None:
+            self._call_kwargs = {}
+        elif isinstance(call_kwargs, Mapping):
+            self._call_kwargs = dict(call_kwargs)
+        else:
+            raise TypeError('Keyword arguments must be mapping type or None')
 
     @log_calls
     def create_test(self, other):
         call_args, call_kwargs = self.call_args, self.call_kwargs
         equal_test = self.exercise(*call_args, **call_kwargs)
 
-        def tester(self):
-            self.assertEqual(equal_test,
-                             other(*call_args,
-                                   **call_kwargs))
+        def tester(tester_self):
+            tester_self.assertEqual(equal_test,
+                                    other(*call_args,
+                                          **call_kwargs))
         cls = new_class(self.name, (self.test_class,))
         cls.runTest = tester
         return cls()
@@ -152,16 +179,15 @@ class TimingTest(BaseTest):
 
     @log_calls
     def create_test(self, other):
-        from markingpy.utils import time_run
         tolerance = self.tolerance
         cases = self.cases
 
-        def tester(self):
+        def tester(tester_self):
             for args, kwargs, target in cases:
                 runtime = time_run(other, args, kwargs)
                 if runtime is None:
-                    self.fail(msg='Execution failed')
-                self.assertLessEqual(runtime, (1.0 + tolerance)*target)
+                    tester_self.fail(msg='Execution failed')
+                tester_self.assertLessEqual(runtime, (1.0 + tolerance)*target)
         cls = new_class(self.name, (self.test_class,))
         cls.runTest = tester
         return cls()
@@ -181,10 +207,10 @@ class Test(BaseTest):
         test_func = self.test_func
         exercise = self.exercise
 
-        def tester(self):
+        def tester(tester_self):
             with exercise.set_function(other):
                 output = test_func()
-            self.assertTrue(output)
+                tester_self.assertTrue(output)
         cls = new_class(self.name, (self.test_class,))
         cls.runTest = tester
         return cls()
