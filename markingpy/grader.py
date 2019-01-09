@@ -27,10 +27,11 @@ class Grader:
         Constructor.
         """
         self.directory = directory
-        self.markscheme = import_markscheme(test_file)
-        self.submissions = [Submission(pathjoin(directory, path))
-                            for path in listdir(directory)
-                            if path.endswith('.py')]
+        markscheme = self.markscheme = import_markscheme(test_file)
+        # self.submissions = [Submission(pathjoin(directory, path))
+        #                     for path in listdir(directory)
+        #                     if path.endswith('.py')]
+        self.submissions = (Submission(pth) for pth in markscheme.get_submissions())
         self.at_exit = []
 
     def grade_submission(self, submission, **opts):
@@ -49,21 +50,18 @@ class Grader:
         """
         Run the grader.
         """
-
+        #TODO: Change to initial runtime database + post processing
+        directory = opts['out']
         for submission in self.submissions:
             self.grade_submission(submission, **opts)
+            with open(pathjoin(directory,
+                               submission.reference + '.txt'), 'w') as f:
+                f.write(submission.generate_report())
 
-        if opts['csv'] is not None:
-            self.dump_to_csv(opts['csv'])
-        elif opts['out'] is not None:
-            directory = opts['out']
-            for sub in self.submissions:
-                with open(pathjoin(directory, 
-                                   sub.reference + '.txt'), 'w') as f:
-                    f.write(sub.generate_report())
-        elif opts['print']:
-            for submission in self.submissions:
+            if opts['print']:
                 print(f'Submission {submission.reference}: {submission.score}')
+
+
 
     # context manager
 

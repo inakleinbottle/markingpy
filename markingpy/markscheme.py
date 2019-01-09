@@ -2,6 +2,7 @@
 import logging
 import warnings
 from contextlib import contextmanager
+from pathlib import Path
 
 from .config import GLOBAL_CONF
 from .exercise import Exercise
@@ -57,7 +58,7 @@ class MarkingScheme:
     """
 
     def __init__(self, exercises, style_formula=None, style_marks=10,
-                 score_style='real',
+                 score_style='real', submission_path=None,
                  **kwargs):
         self.exercises = exercises
         self.style_marks = style_marks
@@ -66,10 +67,23 @@ class MarkingScheme:
         if style_formula is None:
             style_formula = GLOBAL_CONF['grader']['style_formula']
         self.style_calc = build_style_calc(style_formula)
+        self.submission_path = submission_path
 
         # Unused parameters
         for k in kwargs:
             warnings.warn('Unrecognised option {}'.format(k))
+
+    def get_submissions(self):
+        path = (Path(self.submission_path) if self.submission_path is not None
+                else Path('.', 'submissions'))
+
+        if not path.is_dir():
+            raise NotADirectoryError('{} is not a directory'.format(path))
+
+        for pth in path.iterdir():
+            if not pth.is_file() or not pth.suffix == '.py':
+                continue
+            yield pth
 
     def format_return(self, score, total_score):
         """

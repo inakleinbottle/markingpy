@@ -30,8 +30,8 @@ def run():
     parser = ArgumentParser()
     parser.add_argument('scheme', default=None,
                         help='The marking scheme for this submission')
-    parser.add_argument('submissions', default=None,
-                        help='The directory containing submission files')
+    #parser.add_argument('submissions', default=None,
+    #                    help='The directory containing submission files')
     parser.add_argument('-c', '--csv', default=None,
                         help='Save submission grades to csv')
     parser.add_argument('-m', '--mail', action='store_true',
@@ -39,6 +39,7 @@ def run():
     parser.add_argument('-o', '--out', default=None,
                         help='Directory to store reports')
     args = parser.parse_args()
+    args.submissions=None
 
     if args.submissions is not None and not pathexists(args.submissions):
         raise CLIError('Submissions directory %s cannot be found'

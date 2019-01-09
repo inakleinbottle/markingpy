@@ -7,6 +7,7 @@ from collections.abc import Iterable, Mapping
 from contextlib import redirect_stdout
 from io import StringIO
 from types import new_class
+from typing import Callable, Any
 from unittest import TestCase, TestResult
 
 from .utils import log_calls, time_run
@@ -72,7 +73,14 @@ class BaseTest(ABC):
         :param other: Function to test.
         :return:
         """
-        test = self.create_test(other)
+        submission_stdout = StringIO()
+
+        def wrapped(*args, **kwargs):
+            with redirect_stdout(submission_stdout):
+                rv = other(*args, **kwargs)
+            return rv
+
+        test = self.create_test(wrapped)
         result = self.result_class()
         test_stdout = StringIO()
         with redirect_stdout(test_stdout):
@@ -195,7 +203,7 @@ class TimingTest(BaseTest):
 
 class Test(BaseTest):
 
-    def __init__(self, test_func, *args, **kwargs):
+    def __init__(self, test_func: Callable[..., bool], *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.test_func = test_func
 
