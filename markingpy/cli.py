@@ -18,9 +18,6 @@ class CLIError(Exception):
         self.msg = msg
 
 
-
-
-
 def run():
     """
     Build the argument parser and run the grader.
@@ -39,17 +36,6 @@ def run():
     parser.add_argument('-o', '--out', default=None,
                         help='Directory to store reports')
     args = parser.parse_args()
-    args.submissions=None
-
-    if args.submissions is not None and not pathexists(args.submissions):
-        raise CLIError('Submissions directory %s cannot be found'
-                       % args.submissions)
-    elif args.submissions is None:
-        path = config['grader']['submissions']
-        if not pathexists(path):
-            raise CLIError('Submissions directory %s cannot be found'
-                           % path)
-        args.submissions = path
 
     if args.scheme is not None and not pathexists(args.scheme):
         raise CLIError('Marking scheme %s cannot be found' % args.scheme)
@@ -64,7 +50,7 @@ def run():
     else:
         args.print = True
 
-    with Grader(args.submissions, args.scheme) as grader:
+    with Grader(args.scheme) as grader:
         grader.grade_submissions(**vars(args))
 
     return 0
@@ -81,10 +67,7 @@ def main():
         print(e.msg)
         exit_code = 1
     except Exception as e:
-        exit_code = 1
         raise
-        
-
     sys.exit(exit_code)
 
 

@@ -8,13 +8,35 @@ from codeop import PyCF_DONT_IMPLY_DEDENT
 from collections import namedtuple, deque
 
 
-Chunk = namedtuple('Chunk', ('line_start', 'line_end', 'content'))
+# Chunk = namedtuple('Chunk', ('line_start', 'line_end', 'content'))
 Reason = namedtuple('Reason', ('removed_at', 'exc'))
+
+
+class Chunk:
+
+    __slots__ = ['line_start', 'line_end', 'content']
+
+    def __init__(self, line_start, line_end, content):
+        self.line_start = line_start
+        self.line_end = line_end
+        self.content = content
+
+    def __iter__(self):
+        yield from (self.line_start, self.line_end, self.content)
+
+    def __repr__(self):
+        return (self.__class__.__name__ + '('
+                + repr(self.line_start)
+                + repr(self.line_end)
+                + repr(self.content) + ')')
+
 
 class RemovedChunk(Chunk):
 
+    __slots__ = ['line_start', 'line_end', 'content', 'reasons']
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, line_start, line_end, content):
+        super().__init__(line_start, line_end, content)
         self.reasons = []
 
     def is_adjacent(self, other):
@@ -39,7 +61,7 @@ class RemovedChunk(Chunk):
             start = self.line_start
             end = other.line_end
         new_removed = RemovedChunk(start, end, content)
-        new_removed.add_reason(*set([*self.reasons, *other.reasons]))
+        new_removed.add_reason(*self.reasons, *other.reasons)
         return new_removed
 
     def get_first_error(self):

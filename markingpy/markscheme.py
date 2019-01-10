@@ -20,7 +20,9 @@ def mark_scheme(**params):
     :param params:
     :return:
     """
-    return MarkschemeConfig(**params)
+    conf = dict(GLOBAL_CONF['markscheme'])
+    conf.update(**params)
+    return MarkschemeConfig(**conf)
 
 
 @log_calls

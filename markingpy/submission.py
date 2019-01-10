@@ -16,7 +16,7 @@ class Submission:
         self.path = path
         with open(path, 'r') as f:
             self.source = f.read()
-        self.reference = os.path.splitext(os.path.basename(path))[0]
+        self.reference = path.name[:-3]
         self.compiler = Compiler()
         self.code = None
         self.score = None

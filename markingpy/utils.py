@@ -7,6 +7,7 @@ from functools import wraps
 from inspect import isfunction
 from time import time
 
+
 from .config import LOGGING_LEVELS
 
 logger = logging.getLogger(__name__)

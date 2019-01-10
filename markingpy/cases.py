@@ -76,8 +76,9 @@ class BaseTest(ABC):
                 rv = other(*args, **kwargs)
             return rv
 
+        test_output = None
         ctx = self.create_test(wrapped)
-        with ctx:
+        with ctx.catch():
             test_output = self.run(other)
         return self.format_feedback(ctx, test_output)
 
@@ -109,7 +110,7 @@ class BaseTest(ABC):
         return self.marks if success else 0
 
     def format_error(self, err):
-        return '\n.'.join(self.indent + line for line in err[1].spltilines())
+        return '\n.'.join(self.indent + line for line in str(err[1]).splitlines())
 
     def format_warnings(self, warnings):
         return '\n'.join(self.indent + line.strip() for warning in warnings
