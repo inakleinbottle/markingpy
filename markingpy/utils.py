@@ -7,6 +7,8 @@ from functools import wraps
 from inspect import isfunction
 from time import time
 
+from .config import LOGGING_LEVELS
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -25,6 +27,8 @@ def log_calls(level=None):
         fn = level
         level = logging.DEBUG
     else:
+        assert level in LOGGING_LEVELS
+        level = LOGGING_LEVELS[level]
         fn = None
 
     def decorator(func):

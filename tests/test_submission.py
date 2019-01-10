@@ -1,6 +1,11 @@
 # Test submission objects
 from unittest import TestCase
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch, mock_open
+
+from textwrap import dedent
+
+
+from markingpy.submission import Submission
 from markingpy.utils import build_style_calc
 
 
@@ -27,3 +32,75 @@ class TestStyleCalculator(TestCase):
 
 
 
+class TestSubmissionClass(TestCase):
+
+    def setUp(self):
+        with patch('builtins.open',
+                   mock_open(read_data='')) as m_open:
+            self.submission = Submission('testpath')
+
+    def test_compilation_of_source(self):
+        """Test compilation of good source code."""
+        source = '''
+        def func_1():
+            pass
+        '''
+        self.submission.source = dedent(source)
+        compile_mock = MagicMock()
+        compile_mock.removed_chunks = []
+        self.submission.compiler = compile_mock
+
+        code = self.submission.compile()
+
+        compile_mock.assert_called_with(dedent(source))
+        self.assertIn('compilation',
+                      self.submission.feedback)
+        self.assertEqual(self.submission.feedback['compilation'],
+                         'No compilation errors found.')
+
+    def test_compilation_tab_error(self):
+        """
+        Test compilation of source containing tab errors.
+        """
+        source = dedent('''
+        def good_fun():
+            return None
+        
+        def bad_fun():
+        \treturn None
+        ''')
+
+        self.submission.source = source
+        compile_mock = MagicMock()
+        removed_chunk = MagicMock()
+        err = MagicMock()
+        err.exc = 'TabError'
+        removed_chunk.get_first_error = MagicMock(return_value=err)
+        removed_chunk.content = dedent('''\
+        def bad_fun():
+        \treturn None''')
+        compile_mock.removed_chunks = [removed_chunk]
+
+        self.submission.compiler = compile_mock
+
+        self.submission.compile()
+
+        compile_mock.assert_called_with(dedent(source))
+        self.assertIn('compilation',
+                      self.submission.feedback)
+        self.assertIsInstance(self.submission.feedback['compilation'], str)
+
+    def test_generate_report_no_compile(self):
+        """Test compilation fails with non-compiled submission."""
+        self.assertRaises((RuntimeError,), self.submission.generate_report)
+
+    def test_generate_report_no_score(self):
+        """Test compilation fails with non-graded submission."""
+        self.submission.code = True
+        self.assertRaises((RuntimeError,), self.submission.generate_report)
+
+    def test_generation_of_report(self):
+        """Test successful compilation of support."""
+        self.submission.code = True
+        self.submission.score = 1
+        self.assertIsInstance(self.submission.generate_report(), str)

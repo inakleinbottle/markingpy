@@ -10,7 +10,12 @@ Welcome to markingpy's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   quickstart
 
+
+
+API Reference
+=============
 
 .. toctree::
     :maxdepth: 1

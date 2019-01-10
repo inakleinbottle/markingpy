@@ -6,19 +6,16 @@ from collections import namedtuple
 from collections.abc import Iterable, Mapping
 from contextlib import redirect_stdout
 from io import StringIO
-from types import new_class
-from typing import Callable, Any
-from unittest import TestCase, TestResult
+from typing import Callable
+
 
 from .utils import log_calls, time_run
+from .execution import ExecutionContext
 
 logger = logging.getLogger(__name__)
 
 
 TestFeedback = namedtuple('TestFeedback', ('test', 'mark', 'feedback'))
-
-
-INDENT = ' '*4
 
 
 class BaseTest(ABC):
@@ -31,8 +28,7 @@ class BaseTest(ABC):
     """
 
     _common_properties = ['name', 'descr', 'marks']
-    result_class = TestResult
-    test_class = TestCase
+    indent = ' '*4
 
     def __init__(self, *, name=None, descr=None, marks=0, exercise=None):
         self.exercise = exercise
@@ -55,7 +51,7 @@ class BaseTest(ABC):
                 raise
         if (item in common_properties
             and attr is None
-            and hasattr(self, 'get_' + item)):
+                and hasattr(self, 'get_' + item)):
                 attr = getter(self, 'get_' + item)()
                 setattr(self, item, attr)
         return attr
@@ -80,49 +76,76 @@ class BaseTest(ABC):
                 rv = other(*args, **kwargs)
             return rv
 
-        test = self.create_test(wrapped)
-        result = self.result_class()
-        test_stdout = StringIO()
-        with redirect_stdout(test_stdout):
-            test.run(result)
-        return self.format_feedback(result, test_stdout)
+        ctx = self.create_test(wrapped)
+        with ctx:
+            test_output = self.run(other)
+        return self.format_feedback(ctx, test_output)
 
     @abstractmethod
     def create_test(self, other):
         """
-        Create the unittest TestCase instance for this test.
+        Create the execution context  for this test.
 
         :param other:
-        :return: unittest.TestCase instance
+        :return: ExecutionContext instance
         """
 
-    def get_success(self, result):
+    @abstractmethod
+    def run(self, other):
+        """
+        Run the test.
+        """
+
+    def get_success(self, ctx, test_output):
         """
         Examine result and determine whether a test was successful.
 
         :param result:
         :return:
         """
-        return result.wasSuccessful()
+        return ctx.ran_successfully and test_output
 
-    def format_feedback(self, result, stdout):
+    def get_marks(self, ctx, test_output, success):
+        return self.marks if success else 0
+
+    def format_error(self, err):
+        return '\n.'.join(self.indent + line for line in err[1].spltilines())
+
+    def format_warnings(self, warnings):
+        return '\n'.join(self.indent + line.strip() for warning in warnings
+                         for line in str(warning).strip().splitlines())
+
+    def format_stdout(self, stdout):
+        return '\n'.join(self.indent + line for line in stdout.splitlines())
+
+    def format_feedback(self, context: ExecutionContext, test_output):
         """
         Collect information and format feedback.
 
-        :param result:
-        :param stdout:
+        :param test_output:
+        :param context:
         :return: TestFeedback named tuple (test, mark, feedback
         """
-        success = self.get_success(result)
+        success = self.get_success(context, test_output)
         outcome = 'Pass' if success else 'Fail'
-        marks = self.marks if success else 0
+        marks = self.get_marks(context, test_output, success)
         msg = 'Outcome: {}, Marks: {}'
         feedback = [str(self), msg.format(outcome, marks)]
-        feedback.extend(INDENT + line for err in result.errors
-                        for line in err[1].strip().splitlines())
-        feedback.extend(INDENT + line.strip()
-                        for line in stdout.getvalue().strip().splitlines())
+        err, warnings = context.error, context.warnings
+        if err:
+            feedback.append(self.format_error(err))
+        if warnings:
+            feedback.append(self.format_warnings(warnings))
+
+        stdout = context.stdout.getvalue().strip()
+        if stdout:
+            feedback.append(self.format_stdout(stdout))
+
         return TestFeedback(self, marks, '\n'.join(feedback))
+
+
+class ExecutionFailedError(Exception):
+    pass
 
 
 class CallTest(BaseTest):
@@ -131,6 +154,7 @@ class CallTest(BaseTest):
         super().__init__(*args, **kwargs)
         self.call_args = call_args
         self.call_kwargs = call_kwargs
+        self.expected = self.exercise(*self.call_args, **self.call_kwargs)
 
     @property
     def call_args(self):
@@ -160,16 +184,12 @@ class CallTest(BaseTest):
 
     @log_calls
     def create_test(self, other):
-        call_args, call_kwargs = self.call_args, self.call_kwargs
-        equal_test = self.exercise(*call_args, **call_kwargs)
+        return ExecutionContext()
 
-        def tester(tester_self):
-            tester_self.assertEqual(equal_test,
-                                    other(*call_args,
-                                          **call_kwargs))
-        cls = new_class(self.name, (self.test_class,))
-        cls.runTest = tester
-        return cls()
+    def run(self, other):
+        output = other(*self.call_args, **self.call_kwargs)
+        return output == self.expected
+
 
 
 TimingCase = namedtuple('TimingCase', ('call_args', 'call_kwargs', 'target'))
@@ -187,18 +207,16 @@ class TimingTest(BaseTest):
 
     @log_calls
     def create_test(self, other):
-        tolerance = self.tolerance
-        cases = self.cases
+        return ExecutionContext()
 
-        def tester(tester_self):
-            for args, kwargs, target in cases:
-                runtime = time_run(other, args, kwargs)
-                if runtime is None:
-                    tester_self.fail(msg='Execution failed')
-                tester_self.assertLessEqual(runtime, (1.0 + tolerance)*target)
-        cls = new_class(self.name, (self.test_class,))
-        cls.runTest = tester
-        return cls()
+    def run(self, other):
+        success = True
+        for args, kwargs, target in self.cases:
+            runtime = time_run(other, args, kwargs)
+            if runtime is None:
+                raise ExecutionFailedError
+            success ^= runtime <= (1.0 + self.tolerance)*target
+        return success
 
 
 class Test(BaseTest):
@@ -212,13 +230,9 @@ class Test(BaseTest):
 
     @log_calls
     def create_test(self, other):
-        test_func = self.test_func
-        exercise = self.exercise
+        ctx = ExecutionContext()
+        ctx.add_context(self.exercise.set_function(other))
+        return ctx
 
-        def tester(tester_self):
-            with exercise.set_function(other):
-                output = test_func()
-                tester_self.assertTrue(output)
-        cls = new_class(self.name, (self.test_class,))
-        cls.runTest = tester
-        return cls()
+    def run(self, other):
+        return self.test_func()

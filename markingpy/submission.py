@@ -7,7 +7,7 @@ from .utils import log_calls
 
 logger = logging.getLogger(__name__)
 
-INDENT = ' '*4
+# INDENT = ' '*4
 
 
 class Submission:
@@ -33,7 +33,7 @@ class Submission:
                 feedback = '\n'.join(('Removed:\n'
                                       + c.content
                                       + '\n'
-                                      + repr(c.get_first_error().exc)
+                                      + str(c.get_first_error().exc)
                                       for c in self.compiler.removed_chunks))
             else:
                 feedback = 'No compilation errors found.'
@@ -51,6 +51,11 @@ class Submission:
         """
         Generate report for this submission.
         """
+        if not self.code:
+            raise RuntimeError('Submission has not yet been compiled.')
+        if not self.score:
+            raise RuntimeError('Submission has not yet been graded.')
+
         lines = ['Result summary for submission {}'.format(self.reference),
                  '\nCompilation report:',
                  self.feedback.get('compilation', ''),

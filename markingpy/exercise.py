@@ -72,7 +72,7 @@ class Exercise:
     def total_marks(self):
         return sum(t.marks for t in self.tests)
 
-    @log_calls
+    @log_calls('info')
     def add_test_call(self, call_params=None, call_kwparams=None, **kwargs):
         """
         Add a call test to the exercise.
@@ -89,7 +89,7 @@ class Exercise:
         self.tests.append(test)
         return test
 
-    @log_calls
+    @log_calls('info')
     def timing_test(self, cases, tolerance=0.2, **kwargs):
         """
         Test the timing of a submission against the model.
@@ -106,7 +106,7 @@ class Exercise:
         self.tests.append(test)
         return test
 
-    @log_calls
+    @log_calls('info')
     def add_test(self, function, name=None, cls=None, **params):
         """
         Add a new test to the exercise. The function should return
@@ -123,7 +123,7 @@ class Exercise:
         self.tests.append(test)
         return test
 
-    @log_calls
+    @log_calls('info')
     def test(self, name=None, cls=None, **kwargs):
         """
         Add a new test to the exercise by decorating a function. The function
