@@ -9,7 +9,6 @@ from contextlib import (
 )
 from warnings import catch_warnings
 
-
 class ExecutionContext:
     def __init__(self):
         self.ran_successfully = True
@@ -20,6 +19,10 @@ class ExecutionContext:
         self.stderr = StringIO()
         self.set_up_actions = []
         self.clean_up_actions = []
+
+    def exception_handler(self):
+        self.ran_successfully = False
+        self.error = sys.exc_info()
 
     def do_set_up(self):
         for action in self.set_up_actions:
@@ -41,7 +44,9 @@ class ExecutionContext:
     @contextmanager
     def catch(self):
         self.do_set_up()
+        warned = None
 
+        # noinspection PyBroadException
         try:
             with ExitStack() as stack:
                 for ctx in self.contexts:
@@ -53,8 +58,7 @@ class ExecutionContext:
         except KeyboardInterrupt:
             raise
         except Exception:
-            self.ran_successfully = False
-            self.error = sys.exc_info()
+            self.exception_handler()
         finally:
             self.warnings = warned
             self.do_clean_up()

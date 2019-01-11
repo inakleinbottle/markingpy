@@ -2,89 +2,131 @@
 
 import sys
 from argparse import ArgumentParser
-from os.path import exists as pathexists
 from pathlib import Path
 
 from .config import GLOBAL_CONF
-from .markscheme import NotAMarkSchemeError
+from .markscheme import import_markscheme
+from .grader import Grader
 
 
 class CLIError(Exception):
     pass
 
 
-
-
-
 def run():
     """
-    Build the argument parser and run the grader.
+    General markingpy cli
     """
     config = GLOBAL_CONF
 
     parser = ArgumentParser()
-    parser.add_argument(
-        "scheme", default=None, help="The marking scheme for this submission"
-    )
-    # parser.add_argument('submissions', default=None,
-    #                    help='The directory containing submission files')
-    parser.add_argument(
-        "-c", "--csv", default=None, help="Save submission grades to csv"
-    )
-    parser.add_argument(
-        "-m",
-        "--mail",
-        action="store_true",
-        help="Send results to submitter by email",
-    )
-    parser.add_argument(
-        "-o", "--out", default=None, help="Directory to store reports"
-    )
+
     args = parser.parse_args()
 
-    if args.scheme is not None and not pathexists(args.scheme):
-        raise CLIError("Marking scheme %s cannot be found" % args.scheme)
-    elif args.scheme is None:
-        path = config["grader"]["scheme"]
-        if not pathexists(path):
-            raise CLIError("Marking scheme %s cannot be found" % path)
-        args.scheme = path
-
-    if args.out or args.csv:
-        args.print = False
-    else:
-        args.print = True
 
     return 0
 
-def main_cli():
-    pass
+
+def is_markscheme(path):
+    is_ms = False
+    if not isinstance(path, Path):
+        return is_ms
+    if not path.name.endswith('.py'):
+        return is_ms
+    if not path.exists():
+        return is_ms
+    text = path.read_text()
+    if 'import markingpy' in text or 'from markingpy import' in text:
+        is_ms = True
+    return is_ms
+
+
+class MarkschemeCommands:
+
+    @staticmethod
+    def run(markscheme, cli_args):
+        parser = ArgumentParser()
+
+        parser.add_argument('--style-formula', type=str)
+        parser.add_argument('--style-marks', type=int)
+        parser.add_argument(
+            '--score-style',
+            choices=['real', 'percentage', 'marks/total', 'all'],
+            default='all'
+        )
+        parser.add_argument('--submission-path', type=str)
+        parser.add_argument('--marks-db', type=str)
+        markscheme.update_config(vars(parser.parse_args(cli_args)))
+
+        grader = Grader(markscheme)
+        with grader:
+            grader.grade_submissions()
+
+    @staticmethod
+    def grades(markscheme, cli_args):
+        parser = ArgumentParser()
+        parser.add_argument('--marks-db', type=str)
+        markscheme.update_config(vars(parser.parse_args(cli_args)))
+
+        subs = markscheme.get_db().fetch_all()
+        for sid, perc, _ in subs:
+            print(f"{sid:60}: {perc}%")
+
+    @staticmethod
+    def summary(markscheme, cli_args):
+        import statistics
+        parser = ArgumentParser()
+        parser.add_argument('--marks-db', type=str)
+        markscheme.update_config(vars(parser.parse_args(cli_args)))
+
+        subs = markscheme.get_db().fetch_all()
+        percs = [sub[1] for sub in subs]
+        mean = statistics.mean(percs)
+        stdev = statistics.stdev(percs)
+        print(f'Summary: Number of submissions = {len(subs)}, Mean = {mean}%, Standard = {stdev:.4}%')
+
+    @staticmethod
+    def dump(markscheme, cli_args):
+        pass
 
 
 def main():
-    from .markscheme import import_markscheme
-    from .grader import Grader
     """
     Main command line runner.
     """
-
     try:
         path = Path(sys.argv[1])
-        cmd, markscheme = import_markscheme(path)
-
-        if cmd == 'run':
-            grader = Grader(markscheme)
-
-            with grader:
-                grader.grade_submissions()
-        elif cmd == 'grades':
-            subs = markscheme.get_db().fetch_all()
-            for sid, perc, _ in subs:
-                print(f"{sid:60}: {perc}%")
-    except NotAMarkSchemeError:
-        main_cli() # No marking scheme file provided,
     except IndexError:
-        main_cli()
+        run()
+
+    args = sys.argv[3:]
+
+    try:
+        cmd = sys.argv[2]
+    except IndexError:
+        cmd = 'run'
+        args = []
+
+    if not is_markscheme(path):
+        return run()
+
+    markscheme = import_markscheme(path)
+    try:
+        fn = getattr(MarkschemeCommands, cmd)
+    except AttributeError:
+        args = [cmd] + args
+        fn = MarkschemeCommands.run
+    fn(markscheme, args)
+
+
+
+
+
+
+
+
+
+
 
 
 

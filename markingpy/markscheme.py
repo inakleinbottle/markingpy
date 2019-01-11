@@ -1,7 +1,5 @@
 import logging
-import sys
 import warnings
-from argparse import ArgumentParser
 from contextlib import contextmanager
 from os import unlink
 from pathlib import Path
@@ -57,49 +55,12 @@ def import_markscheme(path):
         if not exercises:
             raise NotAMarkSchemeError
         config = MarkschemeConfig()
-
-    cmd = config.run_cli(sys.argv[2:])
-    ms = MarkingScheme(path, exercises, **config.config)
-    return cmd, ms
+    return MarkingScheme(path, exercises, **config.config)
 
 
 class MarkschemeConfig:
     def __init__(self, **kwargs):
         self.config = kwargs
-
-    def run_cli(self, argv=None):
-        if argv is None:
-            argv = sys.argv
-
-        parser = ArgumentParser()
-        parser.add_argument('command', default='run', nargs='?')
-
-        parser.add_argument('--style-formula')
-        parser.add_argument('--style-marks', type=int)
-        parser.add_argument('--submission-path')
-        parser.add_argument('--marks-db')
-
-        updates = vars(parser.parse_args(argv))
-        cmd = updates.pop('command')
-        self.config.update({k: v for k, v in updates.items()
-                            if v is not None})
-        return cmd
-
-
-def ms_cli(argv):
-    """
-
-    :param argv: Arguments passed to command line
-    """
-    parser = ArgumentParser()
-    parser.add_argument('command', default='run')
-
-    parser.add_argument('--style-formula')
-    parser.add_argument('--style-marks', type=int)
-    parser.add_argument('--submission-path')
-    parser.add_argument('--marks-db')
-
-    return parser.arse_args(argv)
 
 class MarkingScheme:
     """
@@ -132,6 +93,16 @@ class MarkingScheme:
         for k in kwargs:
             warnings.warn("Unrecognised option {}".format(k))
 
+    def update_config(self, args):
+        for k, v in args.items():
+            if v is None:
+                continue
+
+            if not hasattr(self, k):
+                continue
+
+            setattr(self, k, v)
+
     def get_submissions(self):
         path = (
             Path(self.submission_path)
@@ -148,8 +119,6 @@ class MarkingScheme:
             yield pth
 
     def get_db(self, remove=False):
-        if not self.marks_db_name:
-            self.marks_db_name = '.marks.db'
         path = self.path.with_name(self.marks_db_name)
         if remove:
             if path.exists():

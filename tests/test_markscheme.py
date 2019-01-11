@@ -1,6 +1,7 @@
 import unittest
 from unittest import mock
 from textwrap import dedent
+from pathlib import Path
 
 from markingpy.markscheme import mark_scheme, import_markscheme, MarkingScheme
 
@@ -27,8 +28,8 @@ class ImportMarkschemeTests(unittest.TestCase):
     @mock.patch("markingpy.markscheme.build_style_calc")
     def test_import_marksheme(self, mock_style_calc):
         """Test that mark scheme object correctly created and imported."""
-        markscheme = import_markscheme("testpath")
-        self.mock_open.assert_called_with("testpath", "rt")
+        markscheme = import_markscheme(Path("testpath.py"))
+        self.mock_open.assert_called_with(Path("testpath.py"), "rt")
         mock_style_calc.assert_called()
 
 
