@@ -35,10 +35,10 @@ def log_calls(level=None):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            msg = "Call {}(".format(func.__name__) + ", ".join(map(str, args))
+            msg = "Call {}(".format(func.__name__) + ", ".join(map(repr, args))
             if args and kwargs:
                 msg += ", "
-            msg += ", ".join("{}={}".format(k, v) for k, v in kwargs.items())
+            msg += ", ".join("{}={}".format(k, repr(v)) for k, v in kwargs.items())
             msg += ")"
             logger.log(level, msg)
             return func(*args, **kwargs)

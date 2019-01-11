@@ -19,6 +19,7 @@ class Submission:
         self.compiler = Compiler()
         self.code = None
         self.score = None
+        self.percentage = 0
         self.feedback = {}
 
     @log_calls

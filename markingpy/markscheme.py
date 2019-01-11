@@ -1,15 +1,22 @@
 import logging
+import sys
 import warnings
+from argparse import ArgumentParser
 from contextlib import contextmanager
+from os import unlink
 from pathlib import Path
 
 from .config import GLOBAL_CONF
 from .exercise import Exercise
 from .linter import linter
 from .utils import build_style_calc, log_calls
-
+from .storage import get_db
 
 logger = logging.getLogger(__name__)
+
+
+class NotAMarkSchemeError(Exception):
+    pass
 
 
 def mark_scheme(**params):
@@ -32,6 +39,9 @@ def import_markscheme(path):
     :param path: Path to import
     :return: markscheme
     """
+    if not path.name.endswith('.py'):
+        raise NotAMarkSchemeError
+
     with open(path, "rt") as f:
         source = f.read()
     code = compile(source, path, "exec")
@@ -44,14 +54,52 @@ def import_markscheme(path):
             cf for cf in ns.values() if isinstance(cf, MarkschemeConfig)
         ][0]
     except IndexError:
+        if not exercises:
+            raise NotAMarkSchemeError
         config = MarkschemeConfig()
-    return MarkingScheme(exercises, **config.config)
+
+    cmd = config.run_cli(sys.argv[2:])
+    ms = MarkingScheme(path, exercises, **config.config)
+    return cmd, ms
 
 
 class MarkschemeConfig:
     def __init__(self, **kwargs):
         self.config = kwargs
 
+    def run_cli(self, argv=None):
+        if argv is None:
+            argv = sys.argv
+
+        parser = ArgumentParser()
+        parser.add_argument('command', default='run', nargs='?')
+
+        parser.add_argument('--style-formula')
+        parser.add_argument('--style-marks', type=int)
+        parser.add_argument('--submission-path')
+        parser.add_argument('--marks-db')
+
+        updates = vars(parser.parse_args(argv))
+        cmd = updates.pop('command')
+        self.config.update({k: v for k, v in updates.items()
+                            if v is not None})
+        return cmd
+
+
+def ms_cli(argv):
+    """
+
+    :param argv: Arguments passed to command line
+    """
+    parser = ArgumentParser()
+    parser.add_argument('command', default='run')
+
+    parser.add_argument('--style-formula')
+    parser.add_argument('--style-marks', type=int)
+    parser.add_argument('--submission-path')
+    parser.add_argument('--marks-db')
+
+    return parser.arse_args(argv)
 
 class MarkingScheme:
     """
@@ -60,13 +108,16 @@ class MarkingScheme:
 
     def __init__(
         self,
+        path,
         exercises,
         style_formula=None,
         style_marks=10,
         score_style="real",
         submission_path=None,
+        marks_db=None,
         **kwargs
     ):
+        self.path = path
         self.exercises = exercises
         self.style_marks = style_marks
         self.score_style = score_style
@@ -75,6 +126,7 @@ class MarkingScheme:
             style_formula = GLOBAL_CONF["grader"]["style_formula"]
         self.style_calc = build_style_calc(style_formula)
         self.submission_path = submission_path
+        self.marks_db_name = marks_db
 
         # Unused parameters
         for k in kwargs:
@@ -94,6 +146,15 @@ class MarkingScheme:
             if not pth.is_file() or not pth.suffix == ".py":
                 continue
             yield pth
+
+    def get_db(self, remove=False):
+        if not self.marks_db_name:
+            self.marks_db_name = '.marks.db'
+        path = self.path.with_name(self.marks_db_name)
+        if remove:
+            if path.exists():
+                unlink(path)
+        return get_db(path)
 
     def format_return(self, score, total_score):
         """
@@ -156,5 +217,5 @@ class MarkingScheme:
         score += style_score
         total_score += self.style_marks
         submission.add_feedback("style", lint_report.read())
-
+        submission.percentage = round(100 * score / total_score)
         submission.score = self.format_return(score, total_score)

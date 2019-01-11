@@ -3,19 +3,17 @@
 import sys
 from argparse import ArgumentParser
 from os.path import exists as pathexists
+from pathlib import Path
 
 from .config import GLOBAL_CONF
-from .grader import Grader
+from .markscheme import NotAMarkSchemeError
 
 
 class CLIError(Exception):
-    """
-    Custom exception for command line Errors.
-    """
+    pass
 
-    def __init__(self, msg, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.msg = msg
+
+
 
 
 def run():
@@ -57,25 +55,37 @@ def run():
     else:
         args.print = True
 
-    with Grader(args.scheme) as grader:
-        grader.grade_submissions(**vars(args))
-
     return 0
+
+def main_cli():
+    pass
 
 
 def main():
+    from .markscheme import import_markscheme
+    from .grader import Grader
     """
     Main command line runner.
     """
 
     try:
-        exit_code = run()
-    except CLIError as e:
-        print(e.msg)
-        exit_code = 1
-    except Exception as e:
-        raise
-    sys.exit(exit_code)
+        path = Path(sys.argv[1])
+        cmd, markscheme = import_markscheme(path)
+
+        if cmd == 'run':
+            grader = Grader(markscheme)
+
+            with grader:
+                grader.grade_submissions()
+        elif cmd == 'grades':
+            subs = markscheme.get_db().fetch_all()
+            for sid, perc, _ in subs:
+                print(f"{sid:60}: {perc}%")
+    except NotAMarkSchemeError:
+        main_cli() # No marking scheme file provided,
+    except IndexError:
+        main_cli()
+
 
 
 if __name__ == "__main__":
