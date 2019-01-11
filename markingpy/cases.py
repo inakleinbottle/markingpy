@@ -1,4 +1,3 @@
-
 import logging
 
 from abc import ABC, abstractmethod
@@ -15,7 +14,7 @@ from .execution import ExecutionContext
 logger = logging.getLogger(__name__)
 
 
-TestFeedback = namedtuple('TestFeedback', ('test', 'mark', 'feedback'))
+TestFeedback = namedtuple("TestFeedback", ("test", "mark", "feedback"))
 
 
 class BaseTest(ABC):
@@ -27,21 +26,21 @@ class BaseTest(ABC):
     :param marks: Marks to award for this component, default=0.
     """
 
-    _common_properties = ['name', 'descr', 'marks']
-    indent = ' '*4
+    _common_properties = ["name", "descr", "marks"]
+    indent = " " * 4
 
     def __init__(self, *, name=None, descr=None, marks=0, exercise=None):
         self.exercise = exercise
         self.name = name
         self.descr = descr
         self.marks = marks
-        
+
     def get_name(self):
         return self.__class__.__name__
 
     def __getattribute__(self, item):
         getter = object.__getattribute__
-        common_properties = getter(self, '_common_properties')
+        common_properties = getter(self, "_common_properties")
         try:
             attr = getter(self, item)
         except AttributeError:
@@ -49,17 +48,19 @@ class BaseTest(ABC):
                 attr = None
             else:
                 raise
-        if (item in common_properties
+        if (
+            item in common_properties
             and attr is None
-                and hasattr(self, 'get_' + item)):
-                attr = getter(self, 'get_' + item)()
-                setattr(self, item, attr)
+            and hasattr(self, "get_" + item)
+        ):
+            attr = getter(self, "get_" + item)()
+            setattr(self, item, attr)
         return attr
 
     def __str__(self):
-        rv = self.name.replace('_', ' ')
+        rv = self.name.replace("_", " ")
         if self.descr:
-            rv += '\n' + self.descr
+            rv += "\n" + self.descr
         return rv
 
     def __call__(self, other):
@@ -110,14 +111,19 @@ class BaseTest(ABC):
         return self.marks if success else 0
 
     def format_error(self, err):
-        return '\n.'.join(self.indent + line for line in str(err[1]).splitlines())
+        return "\n.".join(
+            self.indent + line for line in str(err[1]).splitlines()
+        )
 
     def format_warnings(self, warnings):
-        return '\n'.join(self.indent + line.strip() for warning in warnings
-                         for line in str(warning).strip().splitlines())
+        return "\n".join(
+            self.indent + line.strip()
+            for warning in warnings
+            for line in str(warning).strip().splitlines()
+        )
 
     def format_stdout(self, stdout):
-        return '\n'.join(self.indent + line for line in stdout.splitlines())
+        return "\n".join(self.indent + line for line in stdout.splitlines())
 
     def format_feedback(self, context: ExecutionContext, test_output):
         """
@@ -128,9 +134,9 @@ class BaseTest(ABC):
         :return: TestFeedback named tuple (test, mark, feedback
         """
         success = self.get_success(context, test_output)
-        outcome = 'Pass' if success else 'Fail'
+        outcome = "Pass" if success else "Fail"
         marks = self.get_marks(context, test_output, success)
-        msg = 'Outcome: {}, Marks: {}'
+        msg = "Outcome: {}, Marks: {}"
         feedback = [str(self), msg.format(outcome, marks)]
         err, warnings = context.error, context.warnings
         if err:
@@ -142,7 +148,7 @@ class BaseTest(ABC):
         if stdout:
             feedback.append(self.format_stdout(stdout))
 
-        return TestFeedback(self, marks, '\n'.join(feedback))
+        return TestFeedback(self, marks, "\n".join(feedback))
 
 
 class ExecutionFailedError(Exception):
@@ -150,7 +156,6 @@ class ExecutionFailedError(Exception):
 
 
 class CallTest(BaseTest):
-
     def __init__(self, call_args, call_kwargs, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.call_args = call_args
@@ -181,7 +186,7 @@ class CallTest(BaseTest):
         elif isinstance(call_kwargs, Mapping):
             self._call_kwargs = dict(call_kwargs)
         else:
-            raise TypeError('Keyword arguments must be mapping type or None')
+            raise TypeError("Keyword arguments must be mapping type or None")
 
     @log_calls
     def create_test(self, other):
@@ -192,8 +197,7 @@ class CallTest(BaseTest):
         return output == self.expected
 
 
-
-TimingCase = namedtuple('TimingCase', ('call_args', 'call_kwargs', 'target'))
+TimingCase = namedtuple("TimingCase", ("call_args", "call_kwargs", "target"))
 
 
 class TimingTest(BaseTest):
@@ -216,12 +220,11 @@ class TimingTest(BaseTest):
             runtime = time_run(other, args, kwargs)
             if runtime is None:
                 raise ExecutionFailedError
-            success ^= runtime <= (1.0 + self.tolerance)*target
+            success ^= runtime <= (1.0 + self.tolerance) * target
         return success
 
 
 class Test(BaseTest):
-
     def __init__(self, test_func: Callable[..., bool], *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.test_func = test_func

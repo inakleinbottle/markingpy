@@ -25,26 +25,33 @@ def run():
     config = GLOBAL_CONF
 
     parser = ArgumentParser()
-    parser.add_argument('scheme', default=None,
-                        help='The marking scheme for this submission')
-    #parser.add_argument('submissions', default=None,
+    parser.add_argument(
+        "scheme", default=None, help="The marking scheme for this submission"
+    )
+    # parser.add_argument('submissions', default=None,
     #                    help='The directory containing submission files')
-    parser.add_argument('-c', '--csv', default=None,
-                        help='Save submission grades to csv')
-    parser.add_argument('-m', '--mail', action='store_true',
-                        help='Send results to submitter by email')
-    parser.add_argument('-o', '--out', default=None,
-                        help='Directory to store reports')
+    parser.add_argument(
+        "-c", "--csv", default=None, help="Save submission grades to csv"
+    )
+    parser.add_argument(
+        "-m",
+        "--mail",
+        action="store_true",
+        help="Send results to submitter by email",
+    )
+    parser.add_argument(
+        "-o", "--out", default=None, help="Directory to store reports"
+    )
     args = parser.parse_args()
 
     if args.scheme is not None and not pathexists(args.scheme):
-        raise CLIError('Marking scheme %s cannot be found' % args.scheme)
+        raise CLIError("Marking scheme %s cannot be found" % args.scheme)
     elif args.scheme is None:
-        path = config['grader']['scheme']
+        path = config["grader"]["scheme"]
         if not pathexists(path):
-            raise CLIError('Marking scheme %s cannot be found' % path)
+            raise CLIError("Marking scheme %s cannot be found" % path)
         args.scheme = path
-        
+
     if args.out or args.csv:
         args.print = False
     else:
@@ -71,5 +78,5 @@ def main():
     sys.exit(exit_code)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

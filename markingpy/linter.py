@@ -12,14 +12,14 @@ class LinterReport:
         self.stats = None
 
     def write(self, text):
-        if not text.startswith('***'):
+        if not text.startswith("***"):
             self.content.append(text.strip())
 
     def read(self):
         if self.content:
-            return '\n'.join(self.content)
+            return "\n".join(self.content)
         else:
-            return 'No issues found'
+            return "No issues found"
 
     def set_stats(self, stats):
         self.stats = stats
@@ -34,10 +34,11 @@ def linter(submission):
     linter.load_default_plugins()
     linter.read_config_file()
     linter.load_config_file()
-    args = ('--disable=C0103,C0111',
-            '--persistent=n',
-            '--msg-template="{line}:{column:2d}: {msg_id}: {msg}"',
-            )
+    args = (
+        "--disable=C0103,C0111",
+        "--persistent=n",
+        '--msg-template="{line}:{column:2d}: {msg_id}: {msg}"',
+    )
     linter.load_command_line_configuration(args)
     linter.set_reporter(TextReporter(report))
     linter.check(submission.path)

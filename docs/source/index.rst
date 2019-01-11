@@ -11,15 +11,16 @@ Welcome to markingpy's documentation!
    :caption: Contents:
 
    quickstart
+   design
 
 
 
 API Reference
 =============
-
 .. toctree::
     :maxdepth: 1
-    
+    :caption: API Reference
+
     api
 
 

@@ -1,13 +1,16 @@
 """Execution context for running tests"""
 import sys
 from io import StringIO
-from contextlib import (redirect_stdout, redirect_stderr, contextmanager,
-                        ExitStack)
+from contextlib import (
+    redirect_stdout,
+    redirect_stderr,
+    contextmanager,
+    ExitStack,
+)
 from warnings import catch_warnings
 
 
 class ExecutionContext:
-
     def __init__(self):
         self.ran_successfully = True
         self.contexts = []
@@ -55,4 +58,3 @@ class ExecutionContext:
         finally:
             self.warnings = warned
             self.do_clean_up()
-

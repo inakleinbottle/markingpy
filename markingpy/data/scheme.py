@@ -4,11 +4,7 @@
 from markingpy import Exercise, mark_scheme
 
 
-mark_scheme(
-    test=90.,
-    style=10.,
-    style_formula='default'
-    )
+mark_scheme(test=90.0, style=10.0, style_formula="default")
 
 
 # Exercises should be derived from the
@@ -20,12 +16,13 @@ class Exercise1(Exercise):
     the class that start with "test_". The names
     should be descriptive of what the test does.
     """
+
     # The names list declares all the functions that
     # should be found in a submission file. If these
     # are not present, due to compilation errors,
     # they should be replaced by functions that fail
     # the tests
-    names = ['ex1_func']
+    names = ["ex1_func"]
 
     def set_up(self):
         """
@@ -33,7 +30,6 @@ class Exercise1(Exercise):
         """
         # Omit this function if no additional setup is required.
         pass
-
 
     def test_function_1(self):
         """
@@ -46,6 +42,3 @@ class Exercise1(Exercise):
         input2 = 2.0
         output = 3.0
         self.assertEqual(ex1_func(input1, input2), output)
-        
-
-

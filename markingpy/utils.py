@@ -35,13 +35,14 @@ def log_calls(level=None):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            msg = 'Call {}('.format(func.__name__) + ', '.join(map(str, args))
+            msg = "Call {}(".format(func.__name__) + ", ".join(map(str, args))
             if args and kwargs:
-                msg += ', '
-            msg += ', '.join('{}={}'.format(k, v) for k, v in kwargs.items())
-            msg += ')'
+                msg += ", "
+            msg += ", ".join("{}={}".format(k, v) for k, v in kwargs.items())
+            msg += ")"
             logger.log(level, msg)
             return func(*args, **kwargs)
+
         return wrapper
 
     if fn is not None:
@@ -62,19 +63,23 @@ def build_style_calc(formula):
     """
     Build a style calculator by providing a formula
     """
+
     def calculator(report):
         try:
             return max(0.0, eval(formula, report.stats))
         except ZeroDivisionError:
             return 0.0
+
     return calculator
 
 
-DEFAULT_STYLE_FORMULA = ('1. - float(5*error'
-                         ' + warning'
-                         ' + refactor'
-                         ' + convention)'
-                         ' / statement')
+DEFAULT_STYLE_FORMULA = (
+    "1. - float(5*error"
+    " + warning"
+    " + refactor"
+    " + convention)"
+    " / statement"
+)
 default_style_calc = build_style_calc(DEFAULT_STYLE_FORMULA)
 
 
@@ -94,7 +99,7 @@ def time_run(func, args, kwargs):
         logger.error(err)
         return None
     runtime = time() - start_time
-    logger.debug(f'Timed run {func.__name__}: {runtime}')
+    logger.debug(f"Timed run {func.__name__}: {runtime}")
     return runtime
 
 
@@ -120,6 +125,7 @@ if resource is not None and signal is not None:
             yield
         finally:
             resource.setrlimit(resource.RLIMIT_CPU, (soft, hard))
+
 
 else:
     cpu_limit = None
