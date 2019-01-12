@@ -1,7 +1,7 @@
 # markingpy
 Tool for grading a directory of python submissions using a scheme file containing exercises. The grader supports multiple test cases and analyses code style using PyLint.
 
-ld Status](https://travis-ci.com/inakleinbottle/markingpy.svg?branch=master)](https://travis-ci.com/inakleinbottle/markingpy)  
+[![Build Status](https://travis-ci.com/inakleinbottle/markingpy.svg?branch=master)](https://travis-ci.com/inakleinbottle/markingpy) 
 
 ## Installation
 Markingpy should be installed using the pip installation tool.
