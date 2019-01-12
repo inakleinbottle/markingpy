@@ -1,55 +1,27 @@
-API
----
-.. module:: markingpy
 
-Grader
-------
-
-.. autoclass:: markingpy.Grader
-    :members:
-
-Submissions
------------
-
-.. autoclass:: markingpy.submission.Submission
-   :members:
-
-Compiler
---------
-
-.. autoclass:: markingpy.compiler.Compiler
-   :members:
-
-
-Linter
-------
-
-.. autoclass:: markingpy.linter.LinterReport
-   :members:
-
-.. autofunction:: markingpy.linter.linter
-
-
-Test cases
+Decorators
 ----------
 
-.. autoclass:: markingpy.testcases.TestResult
-   :members:
-
-.. autofunction:: markingpy.testcases.load_tests
+.. autofunction:: markingpy.exercise
 
 
 
-Exericses
+
+Exercises
 ---------
-.. autofunction:: markingpy.exercise.null_function
 
-.. autoclass:: markingpy.exercise.Exercise
-     :members:
+.. autoclass:: markingpy.Exercise
+    :members:
 
 
-Utility functions
------------------
 
-.. autofunction:: markingpy.utils.cpu_limit
+Tests
+-----
 
+.. autoclass:: markingpy.cases.BaseTest
+
+.. autoclass:: markingpy.cases.Test
+
+.. autoclass:: markingpy.cases.CallTest
+
+.. autoclass:: markingpy.cases.TimingTest

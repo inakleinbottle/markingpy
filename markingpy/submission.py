@@ -2,40 +2,49 @@ import os
 import logging
 
 
-from markingpy.compiler import Compiler
+from .compiler import Compiler
+from .utils import log_calls
 
 logger = logging.getLogger(__name__)
 
-INDENT = ' '*4
+# INDENT = ' '*4
 
 
 class Submission:
-
     def __init__(self, path, **kwargs):
         self.path = path
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             self.source = f.read()
-        self.reference = os.path.splitext(os.path.basename(path))[0]
-        self.globals = {}
+        self.reference = path.name[:-3]
         self.compiler = Compiler()
-        self.compiled = False
+        self.code = None
         self.score = None
+        self.percentage = 0
         self.feedback = {}
 
-    def set_score(self, score):
-        self.score = score
-
+    @log_calls
     def compile(self):
         """
         Compile the submission source code.
         """
-        if not self.compiled:
-            code = self.compiler(self.source)
-            exec(code, self.globals)
-            self.add_feedback('compilation',
-                              '\n'.join(self.compiler.removed_chunks))
-            self.compiled = True
+        if not self.code:
+            self.code = self.compiler(self.source)
+            if self.compiler.removed_chunks:
+                feedback = "\n".join(
+                    (
+                        "Removed:\n"
+                        + c.content
+                        + "\n"
+                        + str(c.get_first_error().exc)
+                        for c in self.compiler.removed_chunks
+                    )
+                )
+            else:
+                feedback = "No compilation errors found."
+            self.add_feedback("compilation", feedback)
+        return self.code
 
+    @log_calls
     def add_feedback(self, item, feedback):
         """
         Add feedback to the submission.
@@ -46,15 +55,21 @@ class Submission:
         """
         Generate report for this submission.
         """
-        lines = ['Result summary for submission {}'.format(self.reference),
-                 '\nCompilation report:',
-                 self.feedback.get('compilation', ''),
-                 '\nResults for exercises:',
-                 self.feedback.get('tests', ''),
-                 '\nResults of style analysis:',
-                 self.feedback.get('style', ''),
-                 '\n' + '='*70 + '\n',
-                 'Final score {}'.format(self.score),
-                 ]
+        if not self.code:
+            raise RuntimeError("Submission has not yet been compiled.")
+        if not self.score:
+            raise RuntimeError("Submission has not yet been graded.")
 
-        return '\n'.join(lines)
+        lines = [
+            "Result summary for submission {}".format(self.reference),
+            "\nCompilation report:",
+            self.feedback.get("compilation", ""),
+            "\nResults for exercises:",
+            self.feedback.get("tests", ""),
+            "\nResults of style analysis:",
+            self.feedback.get("style", ""),
+            "\n" + "=" * 70 + "\n",
+            "Final score {}".format(self.score),
+        ]
+
+        return "\n".join(lines)
