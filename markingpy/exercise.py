@@ -178,7 +178,9 @@ class Exercise:
             feedback.extend(r.feedback for r in results)
             score = sum(r.mark for r in results)
             logger.info(f"Score for ex: {score} / {self.total_marks}")
-            feedback.append("")
+            feedback.append(
+                f"Score for {self.name}: {score} / {self.total_marks}"
+            )
 
             return ExerciseFeedback(
                 score, self.total_marks, "\n".join(feedback)

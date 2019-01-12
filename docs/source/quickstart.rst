@@ -28,7 +28,6 @@ The most basic exercise components are *call tests*. To add a call test to ``exe
     
 Now when the command line tool is used, the function ``exercise_1`` from each submission will be run with the arguments ``(arg_1, arg_2)``, and the output will be compared against the model solution function, defined in the marking scheme file. (The function defined above simply returns ``None``\ .) Note that the argument of ``add_test_call`` should be a ``tuple`` containg the arguments. A more complete example of a marking scheme file is the following::
 
-
     from markingpy import mark_scheme, exercise
     
     ms = mark_scheme(style_marks=2)
@@ -47,8 +46,20 @@ The ``marks`` keyword argument for ``add_test_call`` informs the grader that eac
 
 Running the command line tool
 -----------------------------
-Once the marking scheme file is written, the command line tool can be used to grade submissions::
+Once the marking scheme file is written, the command line tool can be used to grade submissions using::
 
-    markingpy scheme.py submissions
-    
+    markingpy scheme.py run
 
+By default, this command will look for a directory called *submissions*, and
+will run the grader on each Python (``.py``) file found in that directory.
+The results and will be stored in a database ready to be distributed. A
+summary of the grades can be obtained by using the command::
+
+    markingpy scheme.py summary
+
+The feedback can be dumped into a directoy by using the command::
+
+    markingpy scheme.py dump
+
+This will create a ``.txt`` file for each submission in the current directory
+that contains the feedback for that submission.

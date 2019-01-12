@@ -87,7 +87,15 @@ class MarkschemeCommands:
 
     @staticmethod
     def dump(markscheme, cli_args):
-        pass
+        parser = ArgumentParser()
+        parser.add_argument('--marks-db', type=str)
+        parser.add_argument('path', default='.', nargs='?')
+        args = vars(parser.parse_args(cli_args))
+        path = Path(args.pop('path'))
+
+        markscheme.update_config(args)
+        for sub_id, _, fb in markscheme.get_db().fetch_all():
+            (path / (sub_id + '.txt')).write_text(fb)
 
 
 def main():
@@ -97,7 +105,7 @@ def main():
     try:
         path = Path(sys.argv[1])
     except IndexError:
-        run()
+        return run()
 
     args = sys.argv[3:]
 

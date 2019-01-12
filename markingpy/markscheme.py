@@ -1,7 +1,8 @@
 import logging
 import warnings
+import getpass
+import hashlib
 from contextlib import contextmanager
-from os import unlink
 from pathlib import Path
 
 from .config import GLOBAL_CONF
@@ -62,6 +63,7 @@ class MarkschemeConfig:
     def __init__(self, **kwargs):
         self.config = kwargs
 
+
 class MarkingScheme:
     """
     Marking scheme class.
@@ -79,19 +81,21 @@ class MarkingScheme:
         **kwargs
     ):
         self.path = path
+        content = f'{str(path)},{getpass.getuser()}'.encode()
+        self.unique_id = hashlib.md5(content).hexdigest()
+        logger.info('The unique identifier for this '
+                    f'markscheme is {self.unique_id}')
         self.exercises = exercises
         self.style_marks = style_marks
         self.score_style = score_style
         self.linter = linter
-        if style_formula is None:
-            style_formula = GLOBAL_CONF["grader"]["style_formula"]
         self.style_calc = build_style_calc(style_formula)
         self.submission_path = submission_path
-        self.marks_db_name = marks_db
+        self.marks_db = Path(marks_db).expanduser()
 
         # Unused parameters
         for k in kwargs:
-            warnings.warn("Unrecognised option {}".format(k))
+            warnings.warn(f"Unrecognised option {k}")
 
     def update_config(self, args):
         for k, v in args.items():
@@ -111,19 +115,15 @@ class MarkingScheme:
         )
 
         if not path.is_dir():
-            raise NotADirectoryError("{} is not a directory".format(path))
+            raise NotADirectoryError(f"{path} is not a directory")
 
         for pth in path.iterdir():
             if not pth.is_file() or not pth.suffix == ".py":
                 continue
             yield pth
 
-    def get_db(self, remove=False):
-        path = self.path.with_name(self.marks_db_name)
-        if remove:
-            if path.exists():
-                unlink(path)
-        return get_db(path)
+    def get_db(self):
+        return get_db(self.marks_db, self.unique_id)
 
     def format_return(self, score, total_score):
         """
@@ -133,16 +133,19 @@ class MarkingScheme:
         :param total_score:
         :return: Formatted score
         """
-        if self.score_style == "real":
+        percentage = round(100 * score / total_score)
+        if self.score_style == "basic":
             return str(score)
         elif self.score_style == "percentage":
-            return "{}%".format(round(100 * score / total_score))
+            return f"{percentage}%"
         elif self.score_style == "marks/total":
-            return "{} / {}".format(score, total_score)
+            return f"{score} / {total_score}"
         elif self.score_style == "all":
-            return "{} / {} ({}%)".format(
-                score, total_score, round(100 * score / total_score)
-            )
+            return f"{score} / {total_score} ({percentage}%)"
+        else:
+            return self.score_style.format(score=score,
+                                           total=total_score,
+                                           percentage=percentage)
 
     def patched_import(self):
         def patched(*args, **kwargs):
@@ -185,6 +188,9 @@ class MarkingScheme:
         style_score = round(self.style_calc(lint_report) * self.style_marks)
         score += style_score
         total_score += self.style_marks
-        submission.add_feedback("style", lint_report.read())
+        style_feedback = [lint_report.read(),
+                          f'Style score: {style_score} / {self.style_marks}']
+
+        submission.add_feedback("style", '\n'.join(style_feedback))
         submission.percentage = round(100 * score / total_score)
         submission.score = self.format_return(score, total_score)

@@ -6,9 +6,8 @@ verify_ssl = true
 [dev-packages]
 pytest = "*"
 coverage = "*"
+twine = "*"
+sphinx = "*"
 
 [packages]
 pylint = "*"
-
-[requires]
-python_version = "3.6"

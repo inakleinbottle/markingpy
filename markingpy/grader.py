@@ -24,7 +24,7 @@ class Grader:
         self.submissions = (
             Submission(pth) for pth in markscheme.get_submissions()
         )
-        self.db = markscheme.get_db(remove=True)
+        self.db = markscheme.get_db()
         self.at_exit = []
 
     def grade_submission(self, submission, **opts):
@@ -36,28 +36,13 @@ class Grader:
                        submission.percentage,
                        submission.generate_report())
 
-    #    def dump_to_csv(self, path):
-    #        """
-    #        Write summary statistics to csv file.
-    #        """
-    #        write_csv(path, self.submissions)
-
     def grade_submissions(self, **opts):
         """
         Run the grader.
         """
         # TODO: Change to initial runtime database + post processing
-        directory = Path(opts["out"]) if "out" in opts else None
         for submission in self.submissions:
             self.grade_submission(submission, **opts)
-            if directory:
-                with open(
-                    directory / (submission.reference + ".txt"), 'w'
-                ) as f:
-                    f.write(submission.generate_report())
-
-            # if opts["print"]:
-            #     print(f"Submission {submission.reference}: {submission.score}")
 
     # context manager
     def __enter__(self):

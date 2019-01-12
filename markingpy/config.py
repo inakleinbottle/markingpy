@@ -1,4 +1,5 @@
 import logging
+import os
 
 from configparser import ConfigParser
 from pkgutil import get_data
@@ -21,6 +22,10 @@ def load_config():
     parser = ConfigParser()
     parser.read_string(get_data("markingpy", "data/markingpy.conf").decode())
     parser.read(CONFIG_PATHS)
+    DEBUG_FLAG = os.getenv('MARKINGPY_DEBUG', None)
+    if DEBUG_FLAG:
+        parser['logging']['level'] = 'debug'
+
     return parser
 
 
