@@ -1,6 +1,6 @@
 
-Quickstart
-==========
+Quick start
+===========
 There are two steps to using the markingpy tool. The first is to create the marking scheme, which contains model solutions for the exercises and the testing components. The marking scheme also contains settings for other marking components, such as style analysis, and feedback setting. The second step is using the command line tool to run the grader on the submissions. The tool has several additional options for feedback and grade storage.
 
 A sample marking scheme file

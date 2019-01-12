@@ -96,7 +96,6 @@ def time_run(func, args, kwargs):
     try:
         func(*args, **kwargs)
     except Exception as err:
-        logger.error(err)
         return None
     runtime = time() - start_time
     logger.debug(f"Timed run {func.__name__}: {runtime}")

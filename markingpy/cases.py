@@ -80,7 +80,7 @@ class BaseTest(ABC):
         test_output = None
         ctx = self.create_test(wrapped)
         with ctx.catch():
-            test_output = self.run(other)
+            test_output = self.run(wrapped)
         return self.format_feedback(ctx, test_output)
 
     @abstractmethod
@@ -170,6 +170,8 @@ class CallTest(BaseTest):
     def call_args(self, call_args):
         if call_args is None:
             self._call_args = ()
+        elif isinstance(call_args, str):
+            self._call_args = (call_args,)
         elif isinstance(call_args, Iterable):
             self._call_args = tuple(call_args)
         else:
@@ -205,8 +207,8 @@ class TimingTest(BaseTest):
 
     """
 
-    def __init__(self, cases, tolerance, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, cases, tolerance, **kwargs):
+        super().__init__(**kwargs)
         self.cases = cases
         self.tolerance = tolerance
 

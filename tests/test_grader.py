@@ -1,12 +1,26 @@
-from pathlib import Path
-from collections.abc import Iterable
+from unittest import mock
 
 import pytest
 
-import markingpy.grader
-from markingpy.grader import Grader
+from markingpy import grader
+from markingpy import markscheme
+from markingpy import storage
+from markingpy import submission
 
 
-def test_mark_scheme_imported(monkeypatch):
-    """Test importing of markscheme."""
-    pass
+@pytest.fixture
+def mock_grader(monkeypatch):
+    sub_mock = mock.MagicMock(spec=submission.Submission)
+    monkeypatch.setattr(grader, 'Submission', sub_mock)
+    ms_mock = mock.MagicMock(spec=markscheme.MarkingScheme)
+    ms_mock.get_submissions.return_value = ['sub1', 'sub2']
+    ms_mock.submission_path = 'path'
+    db_mock = mock.MagicMock(spec=storage.Database)
+    ms_mock.get_db.return_value = db_mock
+    return grader.Grader(ms_mock)
+
+
+def test_grader(mock_grader):
+    mock_grader.grade_submissions()
+    mock_grader.markscheme.run.assert_called()
+

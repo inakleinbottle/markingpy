@@ -56,12 +56,11 @@ def import_markscheme(path):
         if not exercises:
             raise NotAMarkSchemeError
         config = MarkschemeConfig()
-    return MarkingScheme(path, exercises, **config.config)
+    return MarkingScheme(path, exercises, **config)
 
 
-class MarkschemeConfig:
-    def __init__(self, **kwargs):
-        self.config = kwargs
+class MarkschemeConfig(dict):
+    pass
 
 
 class MarkingScheme:
@@ -75,7 +74,7 @@ class MarkingScheme:
         exercises,
         style_formula=None,
         style_marks=10,
-        score_style="real",
+        score_style="basic",
         submission_path=None,
         marks_db=None,
         **kwargs

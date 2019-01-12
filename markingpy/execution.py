@@ -1,5 +1,6 @@
 """Execution context for running tests"""
 import sys
+import logging
 from io import StringIO
 from contextlib import (
     redirect_stdout,
@@ -8,6 +9,9 @@ from contextlib import (
     ExitStack,
 )
 from warnings import catch_warnings
+
+logger = logging.getLogger(__name__)
+
 
 class ExecutionContext:
     def __init__(self):
@@ -49,11 +53,11 @@ class ExecutionContext:
         # noinspection PyBroadException
         try:
             with ExitStack() as stack:
-                for ctx in self.contexts:
-                    stack.enter_context(ctx)
                 stack.enter_context(redirect_stdout(self.stdout))
                 stack.enter_context(redirect_stderr(self.stderr))
                 warned = stack.enter_context(catch_warnings(record=True))
+                for ctx in self.contexts:
+                    stack.enter_context(ctx)
                 yield
         except KeyboardInterrupt:
             raise
