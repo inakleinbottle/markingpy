@@ -21,10 +21,10 @@ setup(
     entry_points={"console_scripts": ["markingpy=markingpy.cli:main"]},
     package_data={"markingpy": ["data/markingpy.conf", "data/scheme.py"]},
     classifiers=[
-        "Programming :: Python :: 3",
-        "Programming :: Python :: 3.6",
-        "Programming :: Python :: 3.7",
-        "License :: OSI Approved :: GNU General Public License V3 (GPLV3)",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: OS Independent",
     ]
 )
