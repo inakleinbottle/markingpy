@@ -10,6 +10,7 @@ from .exercise import Exercise
 from .linter import linter
 from .utils import build_style_calc, log_calls
 from .storage import get_db
+from . import finders
 
 logger = logging.getLogger(__name__)
 
@@ -89,8 +90,13 @@ class MarkingScheme:
         self.score_style = score_style
         self.linter = linter
         self.style_calc = build_style_calc(style_formula)
-        self.submission_path = submission_path
+        submission_path = self.submission_path = (
+            Path(submission_path)
+            if submission_path is not None
+            else Path(".", "submissions")
+        )
         self.marks_db = Path(marks_db).expanduser()
+        self.finder = finders.DirectoryFinder(submission_path)
 
         # Unused parameters
         for k in kwargs:
@@ -107,19 +113,7 @@ class MarkingScheme:
             setattr(self, k, v)
 
     def get_submissions(self):
-        path = (
-            Path(self.submission_path)
-            if self.submission_path is not None
-            else Path(".", "submissions")
-        )
-
-        if not path.is_dir():
-            raise NotADirectoryError(f"{path} is not a directory")
-
-        for pth in path.iterdir():
-            if not pth.is_file() or not pth.suffix == ".py":
-                continue
-            yield pth
+        yield from self.finder.get_submissions()
 
     def get_db(self):
         return get_db(self.marks_db, self.unique_id)
