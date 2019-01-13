@@ -9,6 +9,7 @@ from inspect import isfunction, isclass
 
 from .cases import Test, TimingTest, TimingCase, CallTest
 from .utils import log_calls
+from . import cases
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,8 @@ class Exercise:
 
     _ex_no = 0
 
-    def __init__(self, function_or_class, name=None, descr=None, **args):
+    def __init__(self, function_or_class, name=None, descr=None,
+                 marks=None, **args):
         self._ex_no += 1
         wraps(function_or_class)(self)
         self.tests = []
@@ -47,6 +49,8 @@ class Exercise:
         self.func = self.exc_func = function_or_class
         self.name = name if name else self.get_name()
         self.descr = descr
+        self.marks = marks
+        self.marks_checked = False
 
     def __str__(self):
         return self.name
@@ -58,6 +62,13 @@ class Exercise:
         return "Exercise {0._ex_no}: {0.func.__name__}".format(self)
 
     def __call__(self, *args, **kwargs):
+        """
+        Call the exercise function or submission function.
+
+        For functions, this is the same as invoking the function.
+        For classes, this function instantiates the exercise class
+        or the submission class.
+        """
         return self.exc_func(*args, **kwargs)
 
     @contextmanager
@@ -70,7 +81,15 @@ class Exercise:
 
     @property
     def total_marks(self):
-        return sum(t.marks for t in self.tests)
+        if self.marks is not None and self.marks_checked:
+            return self.marks
+        t_marks = sum(t.marks for t in self.tests)
+        if not t_marks == self.marks:
+            raise RuntimeError('Expected number of marks does not match '
+                               'computed total')
+        self.marks = t_marks
+        self.marks_checked = True
+        return self.marks
 
     @log_calls("info")
     def add_test_call(self, call_params=None, call_kwparams=None, **kwargs):
@@ -80,12 +99,47 @@ class Exercise:
         Submission function is evaluated against the model solution, and is
         successful if both functions return the same value.
 
+        This will raise a TypeError if this exercise decorates a class.
+
         :param call_params:
         :param call_kwparams:
         """
+        if isclass(self.func):
+            raise TypeError('Test type invalid for class exercises')
         call_params = call_params if call_params is not None else ()
         call_kwparams = call_kwparams if call_kwparams is not None else {}
         test = CallTest(call_params, call_kwparams, exercise=self, **kwargs)
+        self.tests.append(test)
+        return test
+
+    @log_calls('info')
+    def add_method_test(self, method, call_params=None, call_kwparams=None,
+                        inst_with_args=None, inst_with_kwargs=None):
+        """
+        Test the call of a method on the exercise class. This will create a new
+        instance with the provided arguments, and then run the named method with
+        the provided arguments.
+
+        This will raise a TypeError if the exercise decorates a function.
+
+        :param method: Name of method to be called. Attribute error raised if
+        the method does not exist.
+        :param call_params: Parameters with which to call the method
+        :param call_kwparams: Keyword parameters with which to call the method
+        :param inst_with_args: Parameters for instance creation
+        :param inst_with_kwargs: Keyword parameters for instance creation
+        :return: MethodTest object
+        """
+
+        if isfunction(self.func):
+            raise TypeError('Test type invalid for function exercises.')
+        call_params = call_params if call_params is not None else ()
+        call_kwparams = call_kwparams if call_kwparams is not None else {}
+        inst_with_args = inst_with_args if inst_with_args is not None else ()
+        inst_with_kwargs = inst_with_kwargs if inst_with_kwargs is not None \
+            else {}
+        test = cases.MethodTest(method, call_params, call_kwparams,
+                                inst_with_args, inst_with_kwargs)
         self.tests.append(test)
         return test
 
@@ -213,7 +267,7 @@ def exercise(name=None, cls=None, **args):
 
     def decorator(fn):
         if isclass(fn):
-            raise NotImplementedError("This feature is not yet implemented")
+            return cls(fn, **args)
         elif isfunction(fn):
             return cls(fn, **args)
         else:

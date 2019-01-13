@@ -242,3 +242,7 @@ class Test(BaseTest):
 
     def run(self, other):
         return self.test_func()
+
+
+class MethodTest(CallTest):
+    pass
