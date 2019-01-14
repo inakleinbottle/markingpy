@@ -77,6 +77,7 @@ class MarkingScheme:
         style_marks=10,
         score_style="basic",
         submission_path=None,
+        finder=None,
         marks_db=None,
         **kwargs
     ):
@@ -90,13 +91,19 @@ class MarkingScheme:
         self.score_style = score_style
         self.linter = linter
         self.style_calc = build_style_calc(style_formula)
-        submission_path = self.submission_path = (
-            Path(submission_path)
-            if submission_path is not None
-            else Path(".", "submissions")
-        )
+
+        # Set up the finder for loading submissions.
+        if finder is None and submission_path is None:
+            self.finder = finders.DirectoryFinder(Path('.', 'submissions'))
+        elif finder is None and submission_path:
+            self.finder = finders.DirectoryFinder(submission_path)
+        elif isinstance(finder, finders.BaseFinder):
+            self.finder = finder
+        else:
+            raise TypeError('finder must be an be an instance of a subclass '
+                            'of markingpy.finders.BaseFinder')
+
         self.marks_db = Path(marks_db).expanduser()
-        self.finder = finders.DirectoryFinder(submission_path)
 
         # Unused parameters
         for k in kwargs:

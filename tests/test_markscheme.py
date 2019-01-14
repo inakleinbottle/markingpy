@@ -1,4 +1,5 @@
 import unittest
+import tempfile
 from unittest import mock
 from textwrap import dedent
 from pathlib import Path
@@ -6,15 +7,16 @@ from pathlib import Path
 import pytest
 
 from markingpy import markscheme
-
+from markingpy.finders import NullFinder
 
 
 class ImportMarkschemeTests(unittest.TestCase):
     def setUp(self):
         source = """\
         from markingpy import mark_scheme, exercise
+        from markingpy.finders import NullFinder
         
-        ms = mark_scheme()
+        ms = mark_scheme(finder=NullFinder())
         
         @exercise
         def exercise_1():
@@ -38,22 +40,20 @@ class ImportMarkschemeTests(unittest.TestCase):
 
 @pytest.fixture
 def ms():
-    source = """\
-           from markingpy import mark_scheme, exercise
-
-           ms = mark_scheme()
-
-           @exercise
-           def exercise_1():
-               pass
-           """
-
-    with mock.patch(
-        "markingpy.markscheme.open",
-        mock.mock_open(read_data=dedent(source)),
-    ):
+    with tempfile.TemporaryDirectory() as directory:
+        source = """\
+                 from markingpy import mark_scheme, exercise
+        
+                 ms = mark_scheme()
+        
+                 @exercise
+                 def exercise_1():
+                     pass
+                 """
+        Path(directory, 'test.py').write_text(source)
         ms = markscheme.MarkingScheme('test', [], marks_db='dbpath',
-                                      submission_path='submissions')
+                                      submission_path=directory)
+
     return ms
 
 

@@ -21,7 +21,7 @@ class TestCompiler(TestCase):
                  
                  """
         source = dedent(source)
-        code = self.compiler(source)
+        src, code = self.compiler(source)
         exec(code, self.compiled_globals)
 
         self.assertIn("test_func", self.compiled_globals)
@@ -37,7 +37,7 @@ class TestCompiler(TestCase):
                      return a + b
                  """
         source = dedent(source)
-        code = self.compiler(source)
+        src, code = self.compiler(source)
         exec(code, self.compiled_globals)
 
         self.assertIn("good_func", self.compiled_globals)
@@ -59,7 +59,7 @@ class TestCompiler(TestCase):
                         """
         )
 
-        code = self.compiler(source)
+        src, code = self.compiler(source)
         exec(code, self.compiled_globals)
         self.assertIn("long_function", self.compiled_globals)
         self.assertEqual(self.compiled_globals["long_function"](1, 1), 2)
