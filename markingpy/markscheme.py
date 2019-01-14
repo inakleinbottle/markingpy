@@ -10,6 +10,7 @@ from .exercise import Exercise
 from .linter import linter
 from .utils import build_style_calc, log_calls
 from .storage import get_db
+from . import finders
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,7 @@ class MarkingScheme:
         style_marks=10,
         score_style="basic",
         submission_path=None,
+        finder=None,
         marks_db=None,
         **kwargs
     ):
@@ -89,7 +91,18 @@ class MarkingScheme:
         self.score_style = score_style
         self.linter = linter
         self.style_calc = build_style_calc(style_formula)
-        self.submission_path = submission_path
+
+        # Set up the finder for loading submissions.
+        if finder is None and submission_path is None:
+            self.finder = finders.DirectoryFinder(Path('.', 'submissions'))
+        elif finder is None and submission_path:
+            self.finder = finders.DirectoryFinder(submission_path)
+        elif isinstance(finder, finders.BaseFinder):
+            self.finder = finder
+        else:
+            raise TypeError('finder must be an be an instance of a subclass '
+                            'of markingpy.finders.BaseFinder')
+
         self.marks_db = Path(marks_db).expanduser()
 
         # Unused parameters
@@ -107,19 +120,7 @@ class MarkingScheme:
             setattr(self, k, v)
 
     def get_submissions(self):
-        path = (
-            Path(self.submission_path)
-            if self.submission_path is not None
-            else Path(".", "submissions")
-        )
-
-        if not path.is_dir():
-            raise NotADirectoryError(f"{path} is not a directory")
-
-        for pth in path.iterdir():
-            if not pth.is_file() or not pth.suffix == ".py":
-                continue
-            yield pth
+        yield from self.finder.get_submissions()
 
     def get_db(self):
         return get_db(self.marks_db, self.unique_id)

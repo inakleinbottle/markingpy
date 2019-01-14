@@ -13,14 +13,14 @@ def test_run_linter(monkeypatch):
     mocked_linter.stats = {'test' : 0}
 
     class sub:
-        path = 'testpath'
+        source = 'def test(): pass'
     rep = linter.linter(sub())
 
     mocked_linter.load_default_plugins.assert_called()
     mocked_linter.read_config_file.assert_called()
     mocked_linter.load_config_file.assert_called()
     arg = mocked_linter.set_reporter.call_args_list[0][0]
-    mocked_linter.check.assert_called_with('testpath')
+    #mocked_linter.check.assert_called_with('temp.py')
 
     assert isinstance(rep, linter.LinterReport)
 
