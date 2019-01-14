@@ -2,6 +2,7 @@
 Exercise building utilities.
 """
 import logging
+import weakref
 from collections import namedtuple, abc
 from functools import wraps
 from contextlib import contextmanager
@@ -15,6 +16,25 @@ logger = logging.getLogger(__name__)
 
 INDENT = " " * 4
 
+_EXERCISES = []
+
+
+class ExerciseMeta(type):
+
+    def __new__(cls, name, bases, namespace):
+
+        if '__init__' in namespace:
+            init = namespace['__init__']
+
+            @wraps(init)
+            def wrapped(self, *args, **kwargs):
+                ref = weakref.ref(self, lambda r: _EXERCISES.remove(r))
+                if not ref in _EXERCISES:
+                    _EXERCISES.append(ref)
+                return init(self, *args, **kwargs)
+            namespace['__init__'] = wrapped
+        return super().__new__(cls, name, bases, namespace)
+
 
 class ExerciseError(Exception):
     pass
@@ -23,7 +43,7 @@ class ExerciseError(Exception):
 ExerciseFeedback = namedtuple("Feedback", ("marks", "total_marks", "feedback"))
 
 
-class Exercise:
+class Exercise(metaclass=ExerciseMeta):
     """
     Exercises are the main objects in a marking scheme file. These will be used
     to test each submission to construct the final mark and feedback. Each
@@ -38,11 +58,9 @@ class Exercise:
     :param descr: Short description of the test to be printed in the feedback.
     """
 
-    _ex_no = 0
 
     def __init__(self, function_or_class, name=None, descr=None,
                  marks=None, **args):
-        self._ex_no += 1
         wraps(function_or_class)(self)
         self.tests = []
         self.num_tests = 0
@@ -50,16 +68,15 @@ class Exercise:
         self.name = name if name else self.get_name()
         self.descr = descr
         self.marks = marks
-        self.marks_checked = False
 
     def __str__(self):
         return self.name
 
     def __repr__(self):
-        return "{0.__class__.__name__}(0.func.__name__)".format(self)
+        return f"{self.__class__.__name__}({self.func.__name__})"
 
     def get_name(self):
-        return "Exercise {0._ex_no}: {0.func.__name__}".format(self)
+        return f"Exercise: {self.func.__name__}"
 
     def __call__(self, *args, **kwargs):
         """
@@ -81,14 +98,12 @@ class Exercise:
 
     @property
     def total_marks(self):
-        if self.marks is not None and self.marks_checked:
-            return self.marks
         t_marks = sum(t.marks for t in self.tests)
+        if self.marks is None:
+            return t_marks
         if not t_marks == self.marks:
             raise RuntimeError('Expected number of marks does not match '
                                'computed total')
-        self.marks = t_marks
-        self.marks_checked = True
         return self.marks
 
     @log_calls("info")

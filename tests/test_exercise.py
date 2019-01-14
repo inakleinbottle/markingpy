@@ -34,7 +34,7 @@ def ex_with_args():
 def test_created_exercise_attributes(ex_no_args):
     """Test that created exercises has correct attributes."""
     assert isinstance(ex_no_args, Exercise)
-    assert ex_no_args.name == "Exercise 1: test_func"
+    assert ex_no_args.name == "Exercise: test_func"
     assert ex_no_args.exc_func is ex_no_args.func
     assert ex_no_args(None, None) == "Success"
     assert ex_no_args.total_marks == 0
