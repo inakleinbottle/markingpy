@@ -89,8 +89,8 @@ class Exercise(metaclass=ExerciseMeta):
         return self.exc_func(*args, **kwargs)
 
     @contextmanager
-    def set_function(self, other):
-        self.exc_func = other
+    def set_to_submission(self, submission_func):
+        self.exc_func = submission_func
         try:
             yield
         finally:
@@ -105,78 +105,6 @@ class Exercise(metaclass=ExerciseMeta):
             raise RuntimeError('Expected number of marks does not match '
                                'computed total')
         return self.marks
-
-    @log_calls("info")
-    def add_test_call(self, call_params=None, call_kwparams=None, **kwargs):
-        """
-        Add a call test to the exercise.
-
-        Submission function is evaluated against the model solution, and is
-        successful if both functions return the same value.
-
-        This will raise a TypeError if this exercise decorates a class.
-
-        :param call_params:
-        :param call_kwparams:
-        """
-        if isclass(self.func):
-            raise TypeError('Test type invalid for class exercises')
-        call_params = call_params if call_params is not None else ()
-        call_kwparams = call_kwparams if call_kwparams is not None else {}
-        test = CallTest(call_params, call_kwparams, exercise=self, **kwargs)
-        self.tests.append(test)
-        return test
-
-    @log_calls('info')
-    def add_method_test(self, method, call_params=None, call_kwparams=None,
-                        inst_with_args=None, inst_with_kwargs=None):
-        """
-        Test the call of a method on the exercise class. This will create a new
-        instance with the provided arguments, and then run the named method with
-        the provided arguments.
-
-        This will raise a TypeError if the exercise decorates a function.
-
-        :param method: Name of method to be called. Attribute error raised if
-        the method does not exist.
-        :param call_params: Parameters with which to call the method
-        :param call_kwparams: Keyword parameters with which to call the method
-        :param inst_with_args: Parameters for instance creation
-        :param inst_with_kwargs: Keyword parameters for instance creation
-        :return: MethodTest object
-        """
-
-        if isfunction(self.func):
-            raise TypeError('Test type invalid for function exercises.')
-        call_params = call_params if call_params is not None else ()
-        call_kwparams = call_kwparams if call_kwparams is not None else {}
-        inst_with_args = inst_with_args if inst_with_args is not None else ()
-        inst_with_kwargs = inst_with_kwargs if inst_with_kwargs is not None \
-            else {}
-        test = cases.MethodTest(method, call_params, call_kwparams,
-                                inst_with_args, inst_with_kwargs)
-        self.tests.append(test)
-        return test
-
-    @log_calls("info")
-    def timing_test(self, cases, tolerance=0.2, **kwargs):
-        """
-        Test the timing of a submission against the model.
-
-        :param cases:
-        :param tolerance:
-        """
-        if not isinstance(cases, abc.Iterable):
-            raise ExerciseError("cases must be an iterable")
-        if not all(isinstance(c, TimingCase) for c in cases):
-            raise ExerciseError(
-                "cases must be an iterable containing TimingCases"
-            )
-        logger.info(f"Adding timing test with tolerance {tolerance}")
-        logger.info(kwargs)
-        test = TimingTest(cases, tolerance, exercise=self, **kwargs)
-        self.tests.append(test)
-        return test
 
     @log_calls("info")
     def add_test(self, function, name=None, cls=None, **params):
@@ -261,6 +189,78 @@ class Exercise(metaclass=ExerciseMeta):
             )
 
 
+class FunctionExercise(Exercise):
+
+    set_function = Exercise.set_to_submission
+
+    @log_calls("info")
+    def add_test_call(self, call_params=None, call_kwparams=None, **kwargs):
+        """
+        Add a call test to the exercise.
+
+        Submission function is evaluated against the model solution, and is
+        successful if both functions return the same value.
+
+        :param call_params:
+        :param call_kwparams:
+        """
+        call_params = call_params if call_params is not None else ()
+        call_kwparams = call_kwparams if call_kwparams is not None else {}
+        test = CallTest(call_params, call_kwparams, exercise=self, **kwargs)
+        self.tests.append(test)
+        return test
+
+    @log_calls("info")
+    def timing_test(self, cases, tolerance=0.2, **kwargs):
+        """
+        Test the timing of a submission against the model.
+
+        :param cases:
+        :param tolerance:
+        """
+        if not isinstance(cases, abc.Iterable):
+            raise ExerciseError("cases must be an iterable")
+        if not all(isinstance(c, TimingCase) for c in cases):
+            raise ExerciseError(
+                "cases must be an iterable containing TimingCases"
+            )
+        logger.info(f"Adding timing test with tolerance {tolerance}")
+        logger.info(kwargs)
+        test = TimingTest(cases, tolerance, exercise=self, **kwargs)
+        self.tests.append(test)
+        return test
+
+
+class ClassExercise(Exercise):
+
+    @log_calls('info')
+    def add_method_test(self, method, call_params=None, call_kwparams=None,
+                        inst_with_args=None, inst_with_kwargs=None):
+        """
+        Test the call of a method on the exercise class. This will create a new
+        instance with the provided arguments, and then run the named method with
+        the provided arguments.
+
+
+        :param method: Name of method to be called. Attribute error raised if
+        the method does not exist.
+        :param call_params: Parameters with which to call the method
+        :param call_kwparams: Keyword parameters with which to call the method
+        :param inst_with_args: Parameters for instance creation
+        :param inst_with_kwargs: Keyword parameters for instance creation
+        :return: MethodTest object
+        """
+        call_params = call_params if call_params is not None else ()
+        call_kwparams = call_kwparams if call_kwparams is not None else {}
+        inst_with_args = inst_with_args if inst_with_args is not None else ()
+        inst_with_kwargs = inst_with_kwargs if inst_with_kwargs is not None \
+            else {}
+        test = cases.MethodTest(method, call_params, call_kwparams,
+                                inst_with_args, inst_with_kwargs)
+        self.tests.append(test)
+        return test
+
+
 def exercise(name=None, cls=None, **args):
     """
     Create a new exercise using this function or class as the model solution.
@@ -271,22 +271,22 @@ def exercise(name=None, cls=None, **args):
     Keyword arguments are forwarded to the Exercise instance.
 
     :param name: Name for the exercise.
-    :param cls: The exercise class to be instantiated.
+    :param cls: The exercise class to be instantiated. Defaults to FunctionExercise
+    if a function is decorated and ClassExercise if a class is decorated.
     """
-    if cls is None:
-        cls = Exercise
-
     if isinstance(name, str):
         args["name"] = name
         name = None
 
     def decorator(fn):
-        if isclass(fn):
-            return cls(fn, **args)
-        elif isfunction(fn):
-            return cls(fn, **args)
+        nonlocal cls
+        if cls is None and isfunction(fn):
+            cls = FunctionExercise
+        elif cls is None and isclass(fn):
+            cls = ClassExercise
         else:
             raise TypeError("Expecting function or class.")
+        return cls(fn, **args)
 
     if name is None:
         return decorator
