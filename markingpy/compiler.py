@@ -191,8 +191,9 @@ class Compiler:
         self.sort_chunks()
         new_source = "\n".join(c.content for c in self.chunks)
         # noinspection PyArgumentList
-        return new_source, compile(
-            new_source, filename, mode, flags, dont_inherit, optimize
+        return (
+            new_source,
+            compile(new_source, filename, mode, flags, dont_inherit, optimize),
         )
 
     def sort_chunks(self):

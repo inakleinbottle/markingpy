@@ -23,8 +23,26 @@ def mark_scheme(**params):
     """
     Create a marking scheme config.py object.
 
-    :param params:
-    :return:
+    :param submission_path:
+        Path to submissions. See note below.
+    :param finder: :class:`markingpy.finders.BaseFinder` instance that
+        should be used to generate submissions. The *finder* option takes
+        precedence over *submission path* if provided. If neither is provided,
+        the default ::
+
+            markingpy.finders.DirectoryFinder('submissions')
+
+        is used.
+    :param style_marks: Number of marks available for coding style.
+    :param style_formula: Formula used to generate a score from the linter
+        report.
+    :param score_style: Formatting style for marks to be displayed in feedback.
+        Can be a choice of one of the builtin options: 'basic' (default);
+        'percentage'; 'marks/total'; 'all' marks/total (percentage).
+        Alternatively, a format string can be provided with the variables
+        *mark*, *total*, and *percentage*. For example, the 'all' builtin is
+        equivalent to ``'{mark}/{total} ({percentage})'``.
+    :param marks_db: Path to database to store submission results and feedback.
     """
     conf = dict(GLOBAL_CONF["markscheme"])
     conf.update(**params)
@@ -39,7 +57,7 @@ def import_markscheme(path):
     :param path: Path to import
     :return: markscheme
     """
-    if not path.name.endswith('.py'):
+    if not path.name.endswith(".py"):
         raise NotAMarkSchemeError
 
     with open(path, "rt") as f:
@@ -79,13 +97,14 @@ class MarkingScheme:
         submission_path=None,
         finder=None,
         marks_db=None,
-        **kwargs
+        **kwargs,
     ):
         self.path = path
-        content = f'{str(path)},{getpass.getuser()}'.encode()
+        content = f"{str(path)},{getpass.getuser()}".encode()
         self.unique_id = hashlib.md5(content).hexdigest()
-        logger.info('The unique identifier for this '
-                    f'markscheme is {self.unique_id}')
+        logger.info(
+            "The unique identifier for this " f"markscheme is {self.unique_id}"
+        )
         self.exercises = exercises
         self.style_marks = style_marks
         self.score_style = score_style
@@ -94,14 +113,16 @@ class MarkingScheme:
 
         # Set up the finder for loading submissions.
         if finder is None and submission_path is None:
-            self.finder = finders.DirectoryFinder(Path('.', 'submissions'))
+            self.finder = finders.DirectoryFinder(Path(".", "submissions"))
         elif finder is None and submission_path:
             self.finder = finders.DirectoryFinder(submission_path)
         elif isinstance(finder, finders.BaseFinder):
             self.finder = finder
         else:
-            raise TypeError('finder must be an be an instance of a subclass '
-                            'of markingpy.finders.BaseFinder')
+            raise TypeError(
+                "finder must be an be an instance of a subclass "
+                "of markingpy.finders.BaseFinder"
+            )
 
         self.marks_db = Path(marks_db).expanduser()
 
@@ -143,9 +164,9 @@ class MarkingScheme:
         elif self.score_style == "all":
             return f"{score} / {total_score} ({percentage}%)"
         else:
-            return self.score_style.format(score=score,
-                                           total=total_score,
-                                           percentage=percentage)
+            return self.score_style.format(
+                score=score, total=total_score, percentage=percentage
+            )
 
     def patched_import(self):
         def patched(*args, **kwargs):
@@ -188,9 +209,11 @@ class MarkingScheme:
         style_score = round(self.style_calc(lint_report) * self.style_marks)
         score += style_score
         total_score += self.style_marks
-        style_feedback = [lint_report.read(),
-                          f'Style score: {style_score} / {self.style_marks}']
+        style_feedback = [
+            lint_report.read(),
+            f"Style score: {style_score} / {self.style_marks}",
+        ]
 
-        submission.add_feedback("style", '\n'.join(style_feedback))
+        submission.add_feedback("style", "\n".join(style_feedback))
         submission.percentage = round(100 * score / total_score)
         submission.score = self.format_return(score, total_score)

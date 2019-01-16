@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 # INDENT = ' '*4
 
-Scores = namedtuple('Scores', ['raw', 'total', 'percentage', 'formatted'])
+Scores = namedtuple("Scores", ["raw", "total", "percentage", "formatted"])
 
 
 class Submission:

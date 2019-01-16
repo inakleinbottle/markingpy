@@ -8,12 +8,11 @@ logger = logging.getLogger(__name__)
 
 
 class Database:
-
     def __init__(self, path, markscheme_id):
         self.path = path
         parent = path.parent
         if not parent.exists():
-            logger.debug(f'Creating directory {parent}')
+            logger.debug(f"Creating directory {parent}")
             parent.mkdir(parents=True)
         self.markscheme_id = markscheme_id
         self.db = db = sqlite3.connect(str(self.path))
@@ -51,8 +50,7 @@ class Database:
             " FROM submissions WHERE"
             " markscheme_id = ? AND"
             " submission_id = ?",
-            (self.markscheme_id,
-            submission_id,)
+            (self.markscheme_id, submission_id),
         )
         return cur.fetchone()
 
@@ -61,7 +59,7 @@ class Database:
             "SELECT submission_id, percentage, feedback"
             " FROM submissions WHERE"
             " markscheme_id = ?",
-            (self.markscheme_id,)
+            (self.markscheme_id,),
         )
         return cur.fetchall()
 
@@ -71,7 +69,7 @@ _DATABASE = None
 
 def get_db(path, markscheme_id):
     global _DATABASE
-    logger.debug(f'Getting database from path: {str(path)}')
+    logger.debug(f"Getting database from path: {str(path)}")
     if _DATABASE is None:
         _DATABASE = Database(path, markscheme_id)
     return _DATABASE

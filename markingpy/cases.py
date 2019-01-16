@@ -27,10 +27,11 @@ class BaseTest(magic.MagicBase):
     :param descr: Short description to be displayed in feedback.
     :param marks: Marks to award for this component, default=0.
     """
+
     name: common(str)
     descr: common(str)
     marks: common(None)
-    __enforced = ['create_test', 'run']
+    __enforced = ["create_test", "run"]
 
     indent = " " * 4
 
@@ -150,7 +151,7 @@ class CallTest(BaseTest):
         self.call_kwargs = call_kwargs
 
         super().__init__(*args, **kwargs)
-        self.expected = self.exercise(*self.call_args, **self.call_kwargs)
+        self.expected = self.exercise.func(*self.call_args, **self.call_kwargs)
 
     @log_calls
     def create_test(self, other):
@@ -173,9 +174,7 @@ class TimingTest(BaseTest):
         if not isinstance(cases, abc.Iterable):
             raise TypeError("cases must be an iterable")
         if not all(isinstance(c, TimingCase) for c in cases):
-            raise TypeError(
-                "cases must be an iterable containing TimingCases"
-            )
+            raise TypeError("cases must be an iterable containing TimingCases")
 
         self.cases = cases
         self.tolerance = tolerance
@@ -216,11 +215,23 @@ class Test(BaseTest):
 # noinspection PyUnresolvedReferences
 class MethodTest(BaseTest):
     call_params: args
-    call_kwargs: kwargs
+    call_kwparams: kwargs
+    inst_args: args
+    inst_kwargs: kwargs
 
-    def __init__(self, method, call_params, call_kwparams, *args, **kwargs):
+    def __init__(
+        self,
+        method,
+        call_params=None,
+        call_kwparams=None,
+        inst_args=None,
+        inst_kwargs=None,
+        *args,
+        **kwargs
+    ):
         self.method = method
         self.call_args = call_params
         self.call_kwargs = call_kwparams
+        self.inst_args = inst_args
+        self.inst_kwargs = inst_kwargs
         super().__init__(*args, **kwargs)
-

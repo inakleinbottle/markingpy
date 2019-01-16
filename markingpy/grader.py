@@ -32,9 +32,11 @@ class Grader:
         Run the grader tests on a submission.
         """
         self.markscheme.run(submission)
-        self.db.insert(submission.reference,
-                       submission.percentage,
-                       submission.generate_report())
+        self.db.insert(
+            submission.reference,
+            submission.percentage,
+            submission.generate_report(),
+        )
 
     def grade_submissions(self, **opts):
         """

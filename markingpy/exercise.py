@@ -1,6 +1,7 @@
 """
 Exercise building utilities.
 """
+import functools
 import logging
 import weakref
 from collections import namedtuple, abc
@@ -16,35 +17,28 @@ logger = logging.getLogger(__name__)
 
 INDENT = " " * 4
 
-_exercises = weakref.WeakSet()
+_exercises = weakref.WeakKeyDictionary()
 
 
-class ExerciseMeta(type):
+class ExerciseBase:
+    def __init__(self):
+        ex_no = min(
+            i
+            for i in range(1, len(_exercises) + 2)
+            if i not in _exercises.values()
+        )
+        _exercises[self] = ex_no
 
-    def __new__(cls, name, bases, namespace):
-        if '__init__' in namespace:
-            init = namespace['__init__']
-
-            @wraps(init)
-            def wrapped(self, *args, **kwargs):
-                _exercises.add(self)
-                return init(self, *args, **kwargs)
-
-            namespace['__init__'] = wrapped
-        return super().__new__(cls, name, bases, namespace)
-
-
-class ExerciseBase(metaclass=ExerciseMeta):
-    pass
+    def get_number(self):
+        return _exercises[self]
 
 
 class ExerciseError(Exception):
     pass
 
 
-Call = namedtuple('Call', ('args', 'kwargs'))
-ExerciseFeedback = namedtuple("Feedback", ("marks", "total_marks",
-                                           "feedback"))
+Call = namedtuple("Call", ("args", "kwargs"))
+ExerciseFeedback = namedtuple("Feedback", ("marks", "total_marks", "feedback"))
 
 
 def record_call(*args, **kwargs):
@@ -58,18 +52,28 @@ class Exercise(ExerciseBase):
     exercise object holds a number of tests to be run, which constitute the
     grading criteria for the exercise.
 
-    The markingpy.exercise decorator is the preferred method for creating
-    instances of this class.
+    This class is intended to provide the core functionality for exercise
+    objects, and it is not intended for this class to be instantiated
+    directly. For exercises involving functions, use the subclass
+    :class:`markingpy.FunctionExercise`, and for exercises involving classes
+    use the subclass :class:`markingpy.ClassExercise`.
+
+    The :function:`markingpy.exercise` decorator is the preferred method for
+    creating Exercise instances. This decorator will select the most
+    appropriate Exercise class to use.
 
     :param function_or_class: Function or class to be wrapped.
     :param name: Name of the test. Defaults to the name of function_or_class.
     :param descr: Short description of the test to be printed in the feedback.
     """
 
-    def __init__(self, function_or_class, name=None, descr=None,
-                 marks=None, **args):
+    def __init__(
+        self, function_or_class, name=None, descr=None, marks=None, **args
+    ):
+        super().__init__()
         wraps(function_or_class)(self)
         self.tests = []
+        self.number = self.get_number()
         self.num_tests = 0
         self.func = function_or_class
         self.exc_func = record_call
@@ -78,6 +82,13 @@ class Exercise(ExerciseBase):
         self.marks = marks
 
     def lock(self):
+        """
+        Lock the function into testing mode.
+
+        The execution function is changed to the model function ready to be used
+        for grading submissions.
+        """
+        # TODO: fix the tests at this point so no more can be added.
         self.exc_func = self.func
 
     def __str__(self):
@@ -87,7 +98,7 @@ class Exercise(ExerciseBase):
         return f"{self.__class__.__name__}({self.func.__name__})"
 
     def get_name(self):
-        return f"Exercise: {self.func.__name__}"
+        return f"Exercise {self.number}: {self.func.__name__}"
 
     def __call__(self, *args, **kwargs):
         """
@@ -113,8 +124,9 @@ class Exercise(ExerciseBase):
         if self.marks is None:
             return t_marks
         if not t_marks == self.marks:
-            raise RuntimeError('Expected number of marks does not match '
-                               'computed total')
+            raise RuntimeError(
+                "Expected number of marks does not match " "computed total"
+            )
         return self.marks
 
     @log_calls("info")
@@ -149,7 +161,7 @@ class Exercise(ExerciseBase):
         `ex.add_test(func)`.
 
         :param name: Name for the test. Defaults to name of the function.
-        :param cls: Class to instantiate. Defaults to `markingpy.cases.Test`.
+        :param cls: Class to instantiate. Defaults to :class:`markingpy.cases.Test`.
         """
         if cls is None:
             cls = Test
@@ -159,9 +171,7 @@ class Exercise(ExerciseBase):
             name = None
 
         def decorator(func):
-            test = cls(func, exercise=self, **kwargs)
-            self.tests.append(test)
-            return test
+            return self.add_test(func, name, cls, **kwargs)
 
         if name is None:
             return decorator
@@ -172,7 +182,7 @@ class Exercise(ExerciseBase):
         """
         Run the test suite on submission.
 
-        :param namespace: submission object
+        :param namespace: submission namespace
         :return: namedtuple containing marks, total_marks, feedback
         """
         fn_name = self.func.__name__
@@ -201,6 +211,10 @@ class Exercise(ExerciseBase):
 
 
 class FunctionExercise(Exercise):
+    """
+    Subclass of :class:`markingpy.Exercise` with test methods for functions.
+    """
+
     set_function = Exercise.set_to_submission
 
     @log_calls("info")
@@ -214,6 +228,8 @@ class FunctionExercise(Exercise):
         :param call_params:
         :param call_kwparams:
         """
+        if isinstance(call_params, Call):
+            call_params, call_kwparams = call_params
         test = CallTest(call_params, call_kwparams, exercise=self, **kwargs)
         self.tests.append(test)
         return test
@@ -228,21 +244,25 @@ class FunctionExercise(Exercise):
         """
         if isinstance(timing_cases, dict):
             # cases from dict - preset targets
-            timing_cases = [TimingCase(*call, target)
-                            for call, target in timing_cases.items()
-                            if isinstance(call, Call)
-                            if target > 0]
+            timing_cases = [
+                TimingCase(*call, target)
+                for call, target in timing_cases.items()
+                if isinstance(call, Call)
+                if target > 0
+            ]
         elif isinstance(timing_cases, abc.Iterable):
             # cases from iterable, each item is a separate call
-            func = time_run(self.func)
-            timing_cases = [TimingCase(*call, func(*call))
-                            for call in timing_cases
-                            if isinstance(call, Call)]
+            if not all(isinstance(case, TimingCase) for case in timing_cases):
+                timing_cases = [
+                    TimingCase(*call, time_run(self.func, *call))
+                    for call in timing_cases
+                    if isinstance(call, Call)
+                ]
         else:
             timing_cases = None
 
         if not timing_cases:
-            raise ExerciseError('Cases not correctly defined.')
+            raise ExerciseError("Cases not correctly defined.")
 
         test = TimingTest(timing_cases, tolerance, exercise=self, **kwargs)
         logger.info(f"Adding timing test with tolerance {tolerance}")
@@ -250,11 +270,64 @@ class FunctionExercise(Exercise):
         return test
 
 
-class ClassExercise(Exercise):
+class ExerciseMethodProxy:
+
+    def __init__(self, cls, parent, inst_call, name):
+        wraps(getattr(cls, name))(self)
+        self.name = name
+        self.parent = parent
+        self.cls = cls
+        self.inst_call = inst_call
 
     @log_calls('info')
-    def add_method_test_call(self, method, call_params=None, call_kwparams=None,
-                             inst_with_args=None, inst_with_kwargs=None):
+    def add_test_call(self, call_params=None, call_kwparams=None, **kwargs):
+
+        if isinstance(call_params, Call):
+            call_params, call_kwparams = call_params
+        return self.parent.add_method_test_call(
+            method=self.name,
+            call_params=call_params,
+            call_kwparams=call_kwparams,
+            inst_with_args=self.inst_call.args,
+            inst_with_kwargs=self.inst_call.kwargs,
+            **kwargs
+        )
+
+
+
+
+# noinspection PyProtectedMember
+class ExerciseInstance:
+
+    def __init__(self, parent, cls, *args, **kwargs):
+        self.__call_args = Call(args, kwargs)
+        self.__parent = parent
+        self.__cls = cls
+
+    def __getattr__(self, item):
+        if not hasattr(self.__cls, item):
+            raise AttributeError(f'{self.__cls} does not have attribute {item}')
+        cls_attr = getattr(self.__cls, item)
+        if isfunction(cls_attr):
+            return ExerciseMethodProxy(self.__cls, self.__parent,
+                                       self.__call_args, item )
+
+
+class ClassExercise(Exercise):
+    """
+    Subclass of :class:`markingpy.Exercise` with test methods for classes.
+    """
+
+    @log_calls("info")
+    def add_method_test_call(
+        self,
+        method,
+        call_params=None,
+        call_kwparams=None,
+        inst_with_args=None,
+        inst_with_kwargs=None,
+        **kwargs,
+    ):
         """
         Test the call of a method on the exercise class. This will create a new
         instance with the provided arguments, and then run the named method with
@@ -262,17 +335,24 @@ class ClassExercise(Exercise):
 
 
         :param method: Name of method to be called. Attribute error raised if
-        the method does not exist.
+            the method does not exist.
         :param call_params: Parameters with which to call the method
         :param call_kwparams: Keyword parameters with which to call the method
         :param inst_with_args: Parameters for instance creation
         :param inst_with_kwargs: Keyword parameters for instance creation
         :return: MethodTest object
         """
-        test = cases.MethodTest(method, call_params, call_kwparams,
-                                inst_with_args, inst_with_kwargs)
+        test = cases.MethodTest(
+            method,
+            call_params,
+            call_kwparams,
+            inst_with_args,
+            inst_with_kwargs,
+            **kwargs,
+        )
         self.tests.append(test)
         return test
+
 
 
 def exercise(name=None, cls=None, **args):
@@ -286,7 +366,7 @@ def exercise(name=None, cls=None, **args):
 
     :param name: Name for the exercise.
     :param cls: The exercise class to be instantiated. Defaults to FunctionExercise
-    if a function is decorated and ClassExercise if a class is decorated.
+        if a function is decorated and ClassExercise if a class is decorated.
     """
     if isinstance(name, str):
         args["name"] = name
