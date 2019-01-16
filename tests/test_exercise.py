@@ -18,7 +18,7 @@ def ex_no_args():
     @exercise
     def test_func(a, b):
         return "Success"
-
+    test_func.lock()
     return test_func
 
 
@@ -27,6 +27,7 @@ def ex_with_args():
     @exercise(name="Test 1", descr="Descr")
     def test():
         return "Also Success"
+    test.lock()
 
     return test
 
@@ -114,8 +115,8 @@ def ex_with_component():
     def test():
         return "Success"
 
+    test.lock()
     test.add_test_call(None, marks=1)
-
     return test
 
 

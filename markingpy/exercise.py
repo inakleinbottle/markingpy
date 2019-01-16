@@ -9,41 +9,49 @@ from contextlib import contextmanager
 from inspect import isfunction, isclass
 
 from .cases import Test, TimingTest, TimingCase, CallTest
-from .utils import log_calls
+from .utils import log_calls, time_run
 from . import cases
 
 logger = logging.getLogger(__name__)
 
 INDENT = " " * 4
 
-_EXERCISES = []
+_exercises = weakref.WeakSet()
 
 
 class ExerciseMeta(type):
 
     def __new__(cls, name, bases, namespace):
-
         if '__init__' in namespace:
             init = namespace['__init__']
 
             @wraps(init)
             def wrapped(self, *args, **kwargs):
-                ref = weakref.ref(self, lambda r: _EXERCISES.remove(r))
-                if not ref in _EXERCISES:
-                    _EXERCISES.append(ref)
+                _exercises.add(self)
                 return init(self, *args, **kwargs)
+
             namespace['__init__'] = wrapped
         return super().__new__(cls, name, bases, namespace)
+
+
+class ExerciseBase(metaclass=ExerciseMeta):
+    pass
 
 
 class ExerciseError(Exception):
     pass
 
 
-ExerciseFeedback = namedtuple("Feedback", ("marks", "total_marks", "feedback"))
+Call = namedtuple('Call', ('args', 'kwargs'))
+ExerciseFeedback = namedtuple("Feedback", ("marks", "total_marks",
+                                           "feedback"))
 
 
-class Exercise(metaclass=ExerciseMeta):
+def record_call(*args, **kwargs):
+    return Call(args, kwargs)
+
+
+class Exercise(ExerciseBase):
     """
     Exercises are the main objects in a marking scheme file. These will be used
     to test each submission to construct the final mark and feedback. Each
@@ -58,16 +66,19 @@ class Exercise(metaclass=ExerciseMeta):
     :param descr: Short description of the test to be printed in the feedback.
     """
 
-
     def __init__(self, function_or_class, name=None, descr=None,
                  marks=None, **args):
         wraps(function_or_class)(self)
         self.tests = []
         self.num_tests = 0
-        self.func = self.exc_func = function_or_class
+        self.func = function_or_class
+        self.exc_func = record_call
         self.name = name if name else self.get_name()
         self.descr = descr
         self.marks = marks
+
+    def lock(self):
+        self.exc_func = self.func
 
     def __str__(self):
         return self.name
@@ -190,7 +201,6 @@ class Exercise(metaclass=ExerciseMeta):
 
 
 class FunctionExercise(Exercise):
-
     set_function = Exercise.set_to_submission
 
     @log_calls("info")
@@ -204,29 +214,38 @@ class FunctionExercise(Exercise):
         :param call_params:
         :param call_kwparams:
         """
-        call_params = call_params if call_params is not None else ()
-        call_kwparams = call_kwparams if call_kwparams is not None else {}
         test = CallTest(call_params, call_kwparams, exercise=self, **kwargs)
         self.tests.append(test)
         return test
 
     @log_calls("info")
-    def timing_test(self, cases, tolerance=0.2, **kwargs):
+    def timing_test(self, timing_cases, tolerance=0.2, **kwargs):
         """
         Test the timing of a submission against the model.
 
-        :param cases:
+        :param timing_cases:
         :param tolerance:
         """
-        if not isinstance(cases, abc.Iterable):
-            raise ExerciseError("cases must be an iterable")
-        if not all(isinstance(c, TimingCase) for c in cases):
-            raise ExerciseError(
-                "cases must be an iterable containing TimingCases"
-            )
+        if isinstance(timing_cases, dict):
+            # cases from dict - preset targets
+            timing_cases = [TimingCase(*call, target)
+                            for call, target in timing_cases.items()
+                            if isinstance(call, Call)
+                            if target > 0]
+        elif isinstance(timing_cases, abc.Iterable):
+            # cases from iterable, each item is a separate call
+            func = time_run(self.func)
+            timing_cases = [TimingCase(*call, func(*call))
+                            for call in timing_cases
+                            if isinstance(call, Call)]
+        else:
+            timing_cases = None
+
+        if not timing_cases:
+            raise ExerciseError('Cases not correctly defined.')
+
+        test = TimingTest(timing_cases, tolerance, exercise=self, **kwargs)
         logger.info(f"Adding timing test with tolerance {tolerance}")
-        logger.info(kwargs)
-        test = TimingTest(cases, tolerance, exercise=self, **kwargs)
         self.tests.append(test)
         return test
 
@@ -234,8 +253,8 @@ class FunctionExercise(Exercise):
 class ClassExercise(Exercise):
 
     @log_calls('info')
-    def add_method_test(self, method, call_params=None, call_kwparams=None,
-                        inst_with_args=None, inst_with_kwargs=None):
+    def add_method_test_call(self, method, call_params=None, call_kwparams=None,
+                             inst_with_args=None, inst_with_kwargs=None):
         """
         Test the call of a method on the exercise class. This will create a new
         instance with the provided arguments, and then run the named method with
@@ -250,11 +269,6 @@ class ClassExercise(Exercise):
         :param inst_with_kwargs: Keyword parameters for instance creation
         :return: MethodTest object
         """
-        call_params = call_params if call_params is not None else ()
-        call_kwparams = call_kwparams if call_kwparams is not None else {}
-        inst_with_args = inst_with_args if inst_with_args is not None else ()
-        inst_with_kwargs = inst_with_kwargs if inst_with_kwargs is not None \
-            else {}
         test = cases.MethodTest(method, call_params, call_kwparams,
                                 inst_with_args, inst_with_kwargs)
         self.tests.append(test)
