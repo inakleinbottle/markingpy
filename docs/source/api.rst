@@ -1,43 +1,67 @@
 
 Marking scheme creation
 -----------------------
+.. module:: markingpy
 
-.. autofunction:: markingpy.exercise
+.. autofunction:: exercise
 
-.. autofunction:: markingpy.mark_scheme
+.. autofunction:: mark_scheme
 
 
 Exercises
 ---------
 
-.. autoclass:: markingpy.Exercise
+.. autoclass:: Exercise
     :members:
 
-.. autoclass:: markingpy.FunctionExercise
+.. autoclass:: FunctionExercise
     :members:
 
-.. autoclass:: markingpy.ClassExercise
+.. autoclass:: ClassExercise
     :members:
 
 
 Tests
 -----
 
-.. autoclass:: markingpy.cases.BaseTest
+.. module:: markingpy.cases
+
+.. autoclass:: BaseTest
     :members:
 
-.. autoclass:: markingpy.cases.Test
+.. autoclass:: Test
     :members:
 
-.. autoclass:: markingpy.cases.CallTest
+.. autoclass:: CallTest
     :members:
 
-.. autoclass:: markingpy.cases.TimingTest
+.. autoclass:: TimingTest
+    :members:
+
+
+Finders
+-------
+
+.. module:: markingpy.finders
+
+.. versionadded:: 0.2.0
+
+.. autoclass:: BaseFinder
+    :members:
+
+.. autoclass:: DirectoryFinder
+    :members:
+
+.. autoclass:: SQLiteFinder
+    :members:
+
+.. autoclass:: NullFinder
     :members:
 
 
 Utilities
 ---------
+.. module:: markingpy.utils
 
 .. autofunction:: markingpy.utils.time_run
 

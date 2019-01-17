@@ -8,8 +8,7 @@ pytest = "*"
 coverage = "*"
 twine = "*"
 sphinx = "*"
-black = "*"
+flake8 = "*"
 
 [packages]
 pylint = "*"
-black = "*"

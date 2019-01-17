@@ -162,6 +162,7 @@ class CallTest(BaseTest):
         return output == self.expected
 
 
+Call = namedtuple("Call", ("args", "kwargs"))
 TimingCase = namedtuple("TimingCase", ("call_args", "call_kwargs", "target"))
 
 
@@ -171,10 +172,27 @@ class TimingTest(BaseTest):
     """
 
     def __init__(self, cases, tolerance, **kwargs):
-        if not isinstance(cases, abc.Iterable):
-            raise TypeError("cases must be an iterable")
-        if not all(isinstance(c, TimingCase) for c in cases):
-            raise TypeError("cases must be an iterable containing TimingCases")
+        if isinstance(cases, dict):
+            # cases from dict - preset targets
+            cases = [
+                TimingCase(*call, target)
+                for call, target in cases.items()
+                if isinstance(call, Call)
+                if target > 0
+            ]
+        elif isinstance(cases, abc.Iterable):
+            # cases from iterable, each item is a separate call
+            if not all(isinstance(case, TimingCase) for case in cases):
+                cases = [
+                    TimingCase(*call, time_run(self.exercise.func, *call))
+                    for call in cases
+                    if isinstance(call, Call)
+                ]
+        else:
+            cases = None
+
+        if not cases:
+            raise ValueError("Cases not correctly defined.")
 
         self.cases = cases
         self.tolerance = tolerance
@@ -235,3 +253,63 @@ class MethodTest(BaseTest):
         self.inst_args = inst_args
         self.inst_kwargs = inst_kwargs
         super().__init__(*args, **kwargs)
+
+    def create_test(self, other):
+        return ExecutionContext()
+
+    def run(self, other):
+        instance = other(*self.inst_args, **self.inst_kwargs)
+        func = getattr(instance, self.method)
+        output = func(*self.call_args, **self.call_kwargs)
+        return output == self.expected
+
+
+# noinspection PyUnresolvedReferences
+class MethodTimingTest(BaseTest):
+    inst_args: args
+    inst_kwargs: kwargs
+
+    def __init__(self, method, cases, tolerance, inst_args, inst_kwargs,
+                 **kwargs):
+        if isinstance(cases, dict):
+            # cases from dict - preset targets
+            cases = [
+                TimingCase(*call, target)
+                for call, target in cases.items()
+                if isinstance(call, Call)
+                if target > 0
+            ]
+        elif isinstance(cases, abc.Iterable):
+            # cases from iterable, each item is a separate call
+            if not all(isinstance(case, TimingCase) for case in cases):
+                cases = [
+                    TimingCase(*call, time_run(self.exercise.func, *call))
+                    for call in cases
+                    if isinstance(call, Call)
+                ]
+        else:
+            cases = None
+
+        if not cases:
+            raise ValueError("Cases not correctly defined.")
+
+        self.cases = cases
+        self.method = method
+        self.tolerance = tolerance
+        self.inst_args = inst_args
+        self.inst_kwargs = inst_kwargs
+        super().__init__(**kwargs)
+
+    def create_test(self, other):
+        return ExecutionContext()
+
+    def run(self, other):
+        instance = other(*self.inst_args, **self.inst_kwargs)
+        func = getattr(instance, self.method)
+        success = True
+        for args, kwargs, target in self.cases:
+            runtime = time_run(func, args, kwargs)
+            if runtime is None:
+                raise ExecutionFailedError
+            success ^= runtime <= (1.0 + self.tolerance) * target
+        return success

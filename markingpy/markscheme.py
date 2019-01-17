@@ -33,6 +33,8 @@ def mark_scheme(**params):
             markingpy.finders.DirectoryFinder('submissions')
 
         is used.
+
+        .. versionadded:: 0.2.0
     :param style_marks: Number of marks available for coding style.
     :param style_formula: Formula used to generate a score from the linter
         report.
@@ -85,6 +87,30 @@ class MarkschemeConfig(dict):
 class MarkingScheme:
     """
     Marking scheme class.
+
+
+    :param submission_path:
+        Path to submissions. See note below.
+    :param finder: :class:`markingpy.finders.BaseFinder` instance that
+        should be used to generate submissions. The *finder* option takes
+        precedence over *submission path* if provided. If neither is provided,
+        the default ::
+
+            markingpy.finders.DirectoryFinder('submissions')
+
+        is used.
+
+        .. versionadded:: 0.2.0
+    :param style_marks: Number of marks available for coding style.
+    :param style_formula: Formula used to generate a score from the linter
+        report.
+    :param score_style: Formatting style for marks to be displayed in feedback.
+        Can be a choice of one of the builtin options: 'basic' (default);
+        'percentage'; 'marks/total'; 'all' marks/total (percentage).
+        Alternatively, a format string can be provided with the variables
+        *mark*, *total*, and *percentage*. For example, the 'all' builtin is
+        equivalent to ``'{mark}/{total} ({percentage})'``.
+    :param marks_db: Path to database to store submission results and feedback.
     """
 
     def __init__(
@@ -139,6 +165,10 @@ class MarkingScheme:
                 continue
 
             setattr(self, k, v)
+
+    def validate(self):
+        ex_validation = {ex: ex.validate() for ex in self.exercises}
+
 
     def get_submissions(self):
         yield from self.finder.get_submissions()
