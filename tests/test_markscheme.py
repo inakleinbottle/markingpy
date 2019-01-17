@@ -102,7 +102,7 @@ def test_markscheme_run_full_marks(ms):
         'statement': 1, 'error': 0, 'warning': 0, 'refactor': 0, 'convention': 0
     }
     mock_linter = mock.MagicMock(
-        autospec=markingpy.linter.linter, return_value=mock_linter_report
+        autospec=markingpy.linters.linter, return_value=mock_linter_report
     )
     mock_submission.compile = mock.MagicMock(
         return_value=('def exercise_1():\n' '   return None')
@@ -135,7 +135,7 @@ def test_markscheme_run_no_marks(ms):
         'statement': 4, 'error': 1, 'warning': 1, 'refactor': 1, 'convention': 1
     }
     mock_linter = mock.MagicMock(
-        autospec=markingpy.linter.linter, return_value=mock_linter_report
+        autospec=markingpy.linters.linter, return_value=mock_linter_report
     )
     mock_submission.compile = mock.MagicMock(
         return_value=('def exercise_1():\n' '   return None')

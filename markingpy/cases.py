@@ -16,6 +16,17 @@ logger = logging.getLogger(__name__)
 TestFeedback = namedtuple("TestFeedback", ("test", "mark", "feedback"))
 
 
+__all__ = [
+    'BaseTest',
+    'Test',
+    'CallTest',
+    'TimingTest',
+    'TimingCase',
+    'TestFeedback',
+    'MethodTest',
+    'MethodTimingTest',
+]
+
 # noinspection PyUnresolvedReferences
 class BaseTest(magic.MagicBase):
     """
@@ -132,8 +143,6 @@ class ExecutionFailedError(Exception):
     pass
 
 
-
-
 # noinspection PyUnresolvedReferences
 class CallTest(BaseTest):
     call_args: args
@@ -223,8 +232,6 @@ class Test(BaseTest):
         return self.test_func()
 
 
-
-
 # noinspection PyUnresolvedReferences
 class MethodTest(BaseTest):
     call_params: args
@@ -257,8 +264,6 @@ class MethodTest(BaseTest):
         func = getattr(instance, self.method)
         output = func(* self.call_args, ** self.call_kwargs)
         return output == self.expected
-
-
 
 
 # noinspection PyUnresolvedReferences

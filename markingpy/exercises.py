@@ -16,6 +16,17 @@ logger = logging.getLogger(__name__)
 INDENT = " " * 4
 _exercises = weakref.WeakKeyDictionary()
 
+__all__ = [
+    'Exercise',
+    'ExerciseFunctionProxy',
+    'ExerciseInstance',
+    'ExerciseError',
+    'ExerciseFeedback',
+    'ClassExercise',
+    'FunctionExercise',
+    'exercise',
+]
+
 
 class ExerciseBase:
 

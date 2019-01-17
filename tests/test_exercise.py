@@ -2,7 +2,7 @@
 import pytest
 from unittest import mock
 
-from markingpy.exercise import ( exercise, Exercise, ExerciseFeedback, ExerciseError)
+from markingpy.exercises import (exercise, Exercise, ExerciseFeedback, ExerciseError)
 import markingpy.cases
 
 

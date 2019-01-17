@@ -3,7 +3,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 from time import sleep
 
-from markingpy.exercise import exercise
+from markingpy.exercises import exercise
 from markingpy import cases
 from markingpy import execution
 

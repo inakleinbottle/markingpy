@@ -7,10 +7,6 @@ from functools import wraps
 from inspect import isfunction
 from time import time
 
-
-from .config import LOGGING_LEVELS
-
-logger = logging.getLogger(__name__)
 try:
     import resource
 except ImportError:
@@ -19,6 +15,17 @@ try:
     import signal
 except ImportError:
     signal = None
+
+from .config import LOGGING_LEVELS
+
+logger = logging.getLogger(__name__)
+
+__all__ = [
+    'log_calls',
+    'build_style_calc',
+    'DEFAULT_STYLE_FORMULA',
+    'time_run',
+]
 
 
 def log_calls(level=None):
@@ -107,6 +114,8 @@ def time_run(func, args, kwargs):
 
 
 if resource is not None and signal is not None:
+
+    __all__.append('cpu_linit')
 
     @contextmanager
     def cpu_limit(limit):

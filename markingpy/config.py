@@ -5,6 +5,13 @@ from configparser import ConfigParser
 from pkgutil import get_data
 from os.path import expanduser, join as pathjoin
 
+__all__ =[
+    'CONFIG_PATHS',
+    'LOGGING_LEVELS',
+    'GLOBAL_CONF',
+    'logger',
+]
+
 CONFIG_PATHS = [expanduser(pathjoin("~", ".markingpy"))]
 LOGGING_LEVELS = {
     "debug": logging.DEBUG,
@@ -12,7 +19,6 @@ LOGGING_LEVELS = {
     "warning": logging.WARNING,
     "error": logging.ERROR,
 }
-
 
 def load_config():
     """
@@ -28,3 +34,6 @@ def load_config():
 
 
 GLOBAL_CONF = load_config()
+
+logging.basicConfig(level=LOGGING_LEVELS[GLOBAL_CONF["logging"]["level"]])
+logger = logging.getLogger(__name__)

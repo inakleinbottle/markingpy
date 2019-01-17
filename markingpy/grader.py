@@ -9,6 +9,9 @@ from .submission import Submission
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    'Grader',
+]
 
 class Grader:
     """

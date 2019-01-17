@@ -2,29 +2,29 @@ from unittest import mock
 
 import pytest
 
-from markingpy import linter
+from markingpy import linters
 
 
 def test_run_linter(monkeypatch):
-    mocked_linter = mock.MagicMock(spec=linter.PyLinter)
-    monkeypatch.setattr(linter, "PyLinter", lambda: mocked_linter)
+    mocked_linter = mock.MagicMock(spec=linters.PyLinter)
+    monkeypatch.setattr(linters, "PyLinter", lambda: mocked_linter)
     mocked_linter.stats = {"test": 0}
 
     class sub:
         source = "def test(): pass"
 
-    rep = linter.linter(sub())
+    rep = linters.linter(sub())
     mocked_linter.load_default_plugins.assert_called()
     mocked_linter.read_config_file.assert_called()
     mocked_linter.load_config_file.assert_called()
     arg = mocked_linter.set_reporter.call_args_list[0][0]
     # mocked_linter.check.assert_called_with('temp.py')
-    assert isinstance(rep, linter.LinterReport)
+    assert isinstance(rep, linters.LinterReport)
 
 
 @pytest.fixture
 def mock_report():
-    return linter.LinterReport()
+    return linters.LinterReport()
 
 
 def test_report_write(mock_report):

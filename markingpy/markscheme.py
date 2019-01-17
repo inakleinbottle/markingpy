@@ -6,15 +6,23 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from .config import GLOBAL_CONF
-from .exercise import Exercise
-from .linter import linter
+from .exercises import Exercise
+from .linters import linter
 from .utils import build_style_calc, log_calls
 from .storage import get_db
 
 
-from .import finders
+from . import finders
 
 logger = logging.getLogger(__name__)
+
+__all__ = [
+    'MarkingScheme',
+    'NotAMarkSchemeError',
+    'MarkschemeError',
+    'MarkschemeConfig',
+    'mark_scheme',
+]
 
 
 class NotAMarkSchemeError(Exception):
