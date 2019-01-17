@@ -8,6 +8,8 @@ pytest = "*"
 coverage = "*"
 twine = "*"
 sphinx = "*"
+pytest-cov = "*"
+tox = "*"
 
 [packages]
 pylint = "*"
