@@ -83,7 +83,8 @@ class MarkschemeCommands:
         mean = statistics.mean(percs)
         stdev = statistics.stdev(percs)
         print(
-            f"Summary: Number of submissions = {len(subs)}, Mean = {mean}%, Standard = {stdev:.4}%"
+            f"Summary: Number of submissions = {len(subs)}, "
+            f"Mean = {mean}%, Standard = {stdev:.4}%"
         )
 
     @staticmethod
@@ -97,6 +98,10 @@ class MarkschemeCommands:
         markscheme.update_config(args)
         for sub_id, _, fb in markscheme.get_db().fetch_all():
             (path / (sub_id + ".txt")).write_text(fb)
+
+    @staticmethod
+    def validate(markscheme, cli_args):
+        markscheme.validate()
 
 
 def main():

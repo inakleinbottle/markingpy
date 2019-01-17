@@ -8,7 +8,7 @@ setup(
     name="markingpy",
     author="Sam Morley",
     author_email="sam@inakleinbottle.com",
-    version="0.1.0",
+    version="0.2.0",
     description="Program for automatic grading of Python code.",
     long_description=long_description,
     long_description_content_type="text/markdown",

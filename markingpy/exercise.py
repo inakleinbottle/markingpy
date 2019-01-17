@@ -218,7 +218,6 @@ class Exercise(ExerciseBase):
             name = None
 
         def decorator(func):
-            return self.add_test(func, name, cls, **kwargs)
             return self.add_test(func, name=name, cls=cls, **kwargs)
 
         if name is None:

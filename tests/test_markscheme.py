@@ -7,7 +7,7 @@ import pytest
 
 import markingpy
 from markingpy import markscheme
-
+from markingpy import finders
 
 
 class ImportMarkschemeTests(unittest.TestCase):
@@ -54,9 +54,10 @@ def ms():
         "markingpy.markscheme.open",
         mock.mock_open(read_data=dedent(source)),
     ):
+        # noinspection PyUnresolvedReferences
         style_formula = markingpy.utils.DEFAULT_STYLE_FORMULA
         ms = markscheme.MarkingScheme('test', [], marks_db='dbpath',
-                                      submission_path='submissions',
+                                      finder=finders.NullFinder(),
                                       style_formula=style_formula)
     return ms
 
