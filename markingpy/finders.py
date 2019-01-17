@@ -33,7 +33,7 @@ class DirectoryFinder(BaseFinder):
     def get_submissions(self):
         for file in self.file_list:
             ref = file.name[:-3]
-            source = file.read()
+            source = file.read_text()
             yield submission.Submission(ref, source)
 
 
@@ -56,5 +56,9 @@ class SQLiteFinder(BaseFinder):
 
 
 class NullFinder(BaseFinder):
+
+    def __init__(self, *subs):
+        self.subs = subs
+
     def get_submissions(self, **kwargs):
-        yield from []
+        yield from self.subs

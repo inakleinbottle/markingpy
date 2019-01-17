@@ -75,5 +75,5 @@ class ExerciseClass:
         return self.name + ": " + other_name
 
 
-instance_1 = ExerciseClass('instance_one', 'First instance of the test class')
-instance_1.method_one.add_test_call('try one', marks=1)
+instance_1 = ExerciseClass("instance_one", "First instance of the test class")
+instance_1.method_one.add_test_call("try one", marks=1)

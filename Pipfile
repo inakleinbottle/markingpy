@@ -9,6 +9,8 @@ coverage = "*"
 twine = "*"
 sphinx = "*"
 flake8 = "*"
+tox = "*"
 
 [packages]
 pylint = "*"
+astor = "*"

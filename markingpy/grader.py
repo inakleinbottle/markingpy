@@ -21,9 +21,7 @@ class Grader:
         Constructor.
         """
         self.markscheme = markscheme
-        self.submissions = (
-            Submission(pth) for pth in markscheme.get_submissions()
-        )
+        self.submissions = markscheme.get_submissions()
         self.db = markscheme.get_db()
         self.at_exit = []
 
@@ -48,10 +46,10 @@ class Grader:
 
     # context manager
     def __enter__(self):
-        sys.path.insert(0, self.markscheme.submission_path)
+        #sys.path.insert(0, self.markscheme.submission_path)
         return self
 
     def __exit__(self, err_type, err_val, tb):
-        sys.path.remove(self.markscheme.submission_path)
+        #sys.path.remove(self.markscheme.submission_path)
         for fn in self.at_exit:
             fn()

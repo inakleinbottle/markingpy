@@ -102,13 +102,13 @@ def test_ex_add_bad_timing_tests(ex_with_args):
         ex_with_args.timing_test(None)
         assert False, "Timing test expects iterable"
     except Exception as err:
-        assert isinstance(err, ExerciseError)
+        assert isinstance(err, ValueError)
 
     try:
         ex_with_args.timing_test([None])
         assert False, "Timing test expects iterable of TimingCases"
     except Exception as err:
-        assert isinstance(err, ExerciseError)
+        assert isinstance(err, ValueError)
 
 
 @pytest.fixture

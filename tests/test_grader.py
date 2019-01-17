@@ -8,13 +8,17 @@ from markingpy import storage
 from markingpy import submission
 
 
+
 @pytest.fixture
 def mock_grader(monkeypatch):
-    sub_mock = mock.MagicMock(spec=submission.Submission)
-    monkeypatch.setattr(grader, "Submission", sub_mock)
     ms_mock = mock.MagicMock(spec=markscheme.MarkingScheme)
-    ms_mock.get_submissions.return_value = ["sub1", "sub2"]
-    ms_mock.submission_path = "path"
+    submissions = [
+        mock.MagicMock(spec=submission.Submission, reference='one',
+                       source='', percentage=100),
+        mock.MagicMock(spec=submission.Submission, reference='two',
+                       source='', percentage=0)
+    ]
+    ms_mock.get_submissions = lambda: submissions
     db_mock = mock.MagicMock(spec=storage.Database)
     ms_mock.get_db.return_value = db_mock
     return grader.Grader(ms_mock)
