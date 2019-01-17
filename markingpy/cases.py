@@ -269,8 +269,9 @@ class MethodTimingTest(BaseTest):
     inst_args: args
     inst_kwargs: kwargs
 
-    def __init__(self, method, cases, tolerance, inst_args, inst_kwargs,
-                 **kwargs):
+    def __init__(
+        self, method, cases, tolerance, inst_args, inst_kwargs, **kwargs
+    ):
         if isinstance(cases, dict):
             # cases from dict - preset targets
             cases = [

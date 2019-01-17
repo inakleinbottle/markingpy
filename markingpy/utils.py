@@ -35,13 +35,17 @@ def log_calls(level=None):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            msg = "Call {}(".format(func.__name__) + ", ".join(map(repr, args))
-            if args and kwargs:
-                msg += ", "
-            msg += ", ".join(
-                "{}={}".format(k, repr(v)) for k, v in kwargs.items()
+            #msg = "Call {}(".format(func.__name__) + ", ".join(map(repr, args))
+            #if args and kwargs:
+            #    msg += ", "
+            #msg += ", ".join(
+            #    "{}={}".format(k, repr(v)) for k, v in kwargs.items()
+            #)
+            #msg += ")"
+            msg = (
+                f'Call {func.__name__}'
+                f'({", ".join(str(arg)[:5] for arg in args)})'
             )
-            msg += ")"
             logger.log(level, msg)
             return func(*args, **kwargs)
 
@@ -58,7 +62,7 @@ class RunTimeoutError(Exception):
 
 
 def time_exceeded():
-    raise RunTimeoutError()
+    raise RunTimeoutError
 
 
 def build_style_calc(formula):
@@ -95,9 +99,10 @@ def time_run(func, args, kwargs):
     :return:
     """
     start_time = time()
+    # noinspection PyBroadException
     try:
         func(*args, **kwargs)
-    except Exception as err:
+    except Exception:
         return None
     runtime = time() - start_time
     logger.debug(f"Timed run {func.__name__}: {runtime}")

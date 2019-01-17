@@ -1,13 +1,13 @@
 """
 Exercise building utilities.
 """
-import functools
+
 import logging
 import weakref
-from collections import namedtuple, abc
+from collections import namedtuple
 from functools import wraps
 from contextlib import contextmanager
-from inspect import isfunction, isclass, getsource
+from inspect import isfunction, isclass
 
 from .cases import Test, TimingTest, CallTest, Call
 from .utils import log_calls
@@ -21,7 +21,6 @@ _exercises = weakref.WeakKeyDictionary()
 
 
 class ExerciseBase:
-
     def __init__(self):
         ex_no = min(
             i
@@ -99,12 +98,35 @@ class Exercise(ExerciseBase):
         :return:
         """
         self.lock()
+
+        total_marks = self.total_marks
+
+        if self.marks is not None:
+            if not self.marks == total_marks:
+                raise ExerciseError(
+                    f'{self.name} Error:\n'
+                    f"Total marks ({total_marks}) from tests does not match "
+                    f"marks ({self.marks}) allocated to exercise."
+                )
+        self.marks = total_marks
+
         ns = {self.func.__name__: self.func}
         result = self.run(ns)
-        return result.marks == result.total_marks == self.total_marks
 
-    def get_source(self):
-        return getsource(self.func)
+        if not result.total_marks == self.marks:
+            raise ExerciseError(
+                f'{self.name} Error:\n'
+                f'Total marks allocated in result ({result.total_marks}) does '
+                f'not match the total marks available for the exercise '
+                f'({self.marks}).'
+            )
+
+        if not result.marks == result.total_marks:
+            raise ExerciseError(
+                f'{self.name} Error:\n'
+                f'Model solution for exercise {self.name} does not receive '
+                f'full marks.\n\n{result.feedback}'
+            )
 
     def __str__(self):
         return self.name
@@ -135,14 +157,7 @@ class Exercise(ExerciseBase):
 
     @property
     def total_marks(self):
-        t_marks = sum(t.marks for t in self.tests)
-        if self.marks is None:
-            return t_marks
-        if not t_marks == self.marks:
-            raise RuntimeError(
-                "Expected number of marks does not match " "computed total"
-            )
-        return self.marks
+        return sum(t.marks for t in self.tests)
 
     def add_test(self, *args, name=None, cls=None, **params):
         """
@@ -187,7 +202,7 @@ class Exercise(ExerciseBase):
             name = None
 
         def decorator(func):
-            return self.add_test(func, name, cls, **kwargs)
+            return self.add_test(func, name=name, cls=cls, **kwargs)
 
         if name is None:
             return decorator
@@ -227,7 +242,6 @@ class Exercise(ExerciseBase):
 
 
 class ExerciseFunctionProxy:
-
     def add_test(self, *args, **kwargs):
         pass
 
@@ -244,8 +258,9 @@ class ExerciseFunctionProxy:
         """
         if isinstance(call_params, Call):
             call_params, call_kwparams = call_params
-        return self.add_test(call_params, call_kwparams, cls=CallTest, **kwargs)
-
+        return self.add_test(
+            call_params, call_kwparams, cls=CallTest, **kwargs
+        )
 
     @log_calls("info")
     def timing_test(self, timing_cases, tolerance=0.2, **kwargs):
@@ -255,7 +270,7 @@ class ExerciseFunctionProxy:
         :param timing_cases:
         :param tolerance:
         """
-        return self.add_test(timing_cases, tolerance, cls=TimingTest)
+        return self.add_test(timing_cases, tolerance, cls=TimingTest, **kwargs)
 
 
 class FunctionExercise(Exercise, ExerciseFunctionProxy):
@@ -277,7 +292,6 @@ class FunctionExercise(Exercise, ExerciseFunctionProxy):
 
 
 class ExerciseMethodProxy(ExerciseFunctionProxy):
-
     def __init__(self, cls, parent, inst_call, name):
         wraps(getattr(cls, name))(self)
         self.name = name
@@ -292,21 +306,21 @@ class ExerciseMethodProxy(ExerciseFunctionProxy):
                 *args,
                 inst_with_args=self.inst_call.args,
                 inst_with_kwargs=self.inst_call.kwargs,
-                **kwargs)
+                **kwargs,
+            )
         elif cls is cases.TimingTest:
             return self.parent.method_timing_test(
                 self.name,
                 *args,
                 inst_with_args=self.inst_call.args,
                 isnt_with_kwargs=self.inst_call.kwargs,
-                **kwargs
+                **kwargs,
             )
         raise TypeError
 
 
 # noinspection PyProtectedMember
 class ExerciseInstance:
-
     def __init__(self, parent, cls, *args, **kwargs):
         self.__call_args = Call(args, kwargs)
         self.__parent = parent
@@ -314,11 +328,14 @@ class ExerciseInstance:
 
     def __getattr__(self, item):
         if not hasattr(self.__cls, item):
-            raise AttributeError(f'{self.__cls} does not have attribute {item}')
+            raise AttributeError(
+                f"{self.__cls} does not have attribute {item}"
+            )
         cls_attr = getattr(self.__cls, item)
         if isfunction(cls_attr):
-            return ExerciseMethodProxy(self.__cls, self.__parent,
-                                       self.__call_args, item)
+            return ExerciseMethodProxy(
+                self.__cls, self.__parent, self.__call_args, item
+            )
 
 
 class ClassExercise(Exercise):
@@ -388,7 +405,7 @@ class ClassExercise(Exercise):
             inst_with_args,
             inst_with_kwargs,
             cls=cases.MethodTest,
-            **kwargs
+            **kwargs,
         )
 
     def method_timing_test(
@@ -397,7 +414,7 @@ class ClassExercise(Exercise):
         tolerance=0.2,
         inst_with_args=None,
         inst_with_kwargs=None,
-        **kwargs
+        **kwargs,
     ):
         return self.add_test(
             timing_cases,
@@ -405,7 +422,7 @@ class ClassExercise(Exercise):
             inst_with_args,
             inst_with_kwargs,
             cls=cases.MethodTimingTest,
-            **kwargs
+            **kwargs,
         )
 
 

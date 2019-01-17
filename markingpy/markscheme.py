@@ -10,6 +10,8 @@ from .exercise import Exercise
 from .linter import linter
 from .utils import build_style_calc, log_calls
 from .storage import get_db
+
+
 from . import finders
 
 logger = logging.getLogger(__name__)
@@ -19,10 +21,17 @@ class NotAMarkSchemeError(Exception):
     pass
 
 
+class MarkschemeError(Exception):
+    pass
+
+
 def mark_scheme(**params):
     """
     Create a marking scheme config.py object.
 
+    :param marks: Total marks available for this coursework.
+
+        .. versionadded:: 0.2.0
     :param submission_path:
         Path to submissions. See note below.
     :param finder: :class:`markingpy.finders.BaseFinder` instance that
@@ -77,7 +86,10 @@ def import_markscheme(path):
         if not exercises:
             raise NotAMarkSchemeError
         config = MarkschemeConfig()
-    return MarkingScheme(path, exercises, **config)
+
+    marking_scheme = MarkingScheme(path, exercises, **config)
+    marking_scheme.validate()
+    return marking_scheme
 
 
 class MarkschemeConfig(dict):
@@ -88,7 +100,11 @@ class MarkingScheme:
     """
     Marking scheme class.
 
+    :param marks: Total marks available for this coursework. If provided,
+        this is used to validate the markscheme.
 
+        .. versionadded:: 0.2.0
+    :type marks: int
     :param submission_path:
         Path to submissions. See note below.
     :param finder: :class:`markingpy.finders.BaseFinder` instance that
@@ -117,6 +133,7 @@ class MarkingScheme:
         self,
         path,
         exercises,
+        marks=None,
         style_formula=None,
         style_marks=10,
         score_style="basic",
@@ -131,6 +148,7 @@ class MarkingScheme:
         logger.info(
             "The unique identifier for this " f"markscheme is {self.unique_id}"
         )
+        self.marks = marks
         self.exercises = exercises
         self.style_marks = style_marks
         self.score_style = score_style
@@ -167,8 +185,25 @@ class MarkingScheme:
             setattr(self, k, v)
 
     def validate(self):
-        ex_validation = {ex: ex.validate() for ex in self.exercises}
+        logger.debug('Validating Markscheme')
+        for ex in self.exercises:
+            # ExerciseError raised if any exercise fails to validate
+            # This also locks all exercises into submission mode.
+            ex.validate()
+            logger.debug(f'Validation of {ex.name}: Passed')
 
+        if self.marks is not None:
+            # If validation marks parameter provided, validate the mark totals
+            marks_from_ex = sum(ex.marks for ex in self.exercises)
+            style_marks = self.style_marks
+            total_marks_for_ms = marks_from_ex + style_marks
+            if not total_marks_for_ms == self.marks:
+                raise MarkschemeError(
+                    f'Total marks available in marking scheme '
+                    f'({total_marks_for_ms}) do not match the marks allocated '
+                    f'in the marking scheme configuration ({self.marks})'
+                )
+            logger.debug(f'Marking validation: Passed')
 
     def get_submissions(self):
         yield from self.finder.get_submissions()
