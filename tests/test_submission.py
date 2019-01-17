@@ -33,7 +33,7 @@ class TestStyleCalculator(TestCase):
 
 class TestSubmissionClass(TestCase):
     def setUp(self):
-        self.submission = Submission("testpath", '')
+        self.submission = Submission("testpath", "")
 
     def test_compilation_of_source(self):
         """Test compilation of good source code."""

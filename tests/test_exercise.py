@@ -19,6 +19,7 @@ def ex_no_args():
     def test_func(a, b):
         return "Success"
 
+    test_func.lock()
     return test_func
 
 
@@ -28,13 +29,15 @@ def ex_with_args():
     def test():
         return "Also Success"
 
+    test.lock()
+
     return test
 
 
 def test_created_exercise_attributes(ex_no_args):
     """Test that created exercises has correct attributes."""
     assert isinstance(ex_no_args, Exercise)
-    assert ex_no_args.name == "Exercise 1: test_func"
+    assert ex_no_args.name == f"Exercise {ex_no_args.get_number()}: test_func"
     assert ex_no_args.exc_func is ex_no_args.func
     assert ex_no_args(None, None) == "Success"
     assert ex_no_args.total_marks == 0
@@ -115,7 +118,7 @@ def ex_with_component():
         return "Success"
 
     test.add_test_call(None, marks=1)
-
+    test.lock()
     return test
 
 

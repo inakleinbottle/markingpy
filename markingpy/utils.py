@@ -38,7 +38,9 @@ def log_calls(level=None):
             msg = "Call {}(".format(func.__name__) + ", ".join(map(repr, args))
             if args and kwargs:
                 msg += ", "
-            msg += ", ".join("{}={}".format(k, repr(v)) for k, v in kwargs.items())
+            msg += ", ".join(
+                "{}={}".format(k, repr(v)) for k, v in kwargs.items()
+            )
             msg += ")"
             logger.log(level, msg)
             return func(*args, **kwargs)

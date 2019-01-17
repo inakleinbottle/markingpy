@@ -50,22 +50,20 @@ def ms():
                  def exercise_1():
                      pass
                  """
-        Path(directory, 'test.py').write_text(source)
-        ms = markscheme.MarkingScheme('test', [], marks_db='dbpath',
-                                      submission_path=directory)
+        Path(directory, "test.py").write_text(source)
+        ms = markscheme.MarkingScheme(
+            "test", [], marks_db="dbpath", submission_path=directory
+        )
 
     return ms
 
 
 def test_markscheme_update_config(ms):
-    conf = {
-        'style_marks': 1,  # should work
-        'not_in': None,  # should not work
-    }
+    conf = {"style_marks": 1, "not_in": None}  # should work  # should not work
     ms.update_config(conf)
 
     assert ms.style_marks == 1
-    assert not hasattr(ms, 'not_in')
+    assert not hasattr(ms, "not_in")
 
 
 def test_markscheme_score_formatter(ms):
@@ -73,20 +71,20 @@ def test_markscheme_score_formatter(ms):
     total_score = 2
 
     # test with basic format
-    assert ms.format_return(score, total_score) == '1'
+    assert ms.format_return(score, total_score) == "1"
 
     # test with percentage
-    ms.score_style = 'percentage'
-    assert ms.format_return(score, total_score) == '50%'
+    ms.score_style = "percentage"
+    assert ms.format_return(score, total_score) == "50%"
 
     # test with marks/total
-    ms.score_style = 'marks/total'
-    assert ms.format_return(score, total_score) == '1 / 2'
+    ms.score_style = "marks/total"
+    assert ms.format_return(score, total_score) == "1 / 2"
 
     # test with all
-    ms.score_style = 'all'
-    assert ms.format_return(score, total_score) == '1 / 2 (50%)'
+    ms.score_style = "all"
+    assert ms.format_return(score, total_score) == "1 / 2 (50%)"
 
     # test with custom
-    ms.score_style = '{score} - {total} ({percentage}%)'
-    assert ms.format_return(score, total_score) == '1 - 2 (50%)'
+    ms.score_style = "{score} - {total} ({percentage}%)"
+    assert ms.format_return(score, total_score) == "1 - 2 (50%)"

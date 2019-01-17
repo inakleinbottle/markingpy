@@ -44,7 +44,7 @@ def linter(submission):
     linter.load_command_line_configuration(args)
     linter.set_reporter(TextReporter(report))
     with tempfile.TemporaryDirectory() as directory:
-        path = Path(directory, 'temp.py')
+        path = Path(directory, "temp.py")
         path.write_text(submission.source)
         linter.check(path)
     report.set_stats(linter.stats)
