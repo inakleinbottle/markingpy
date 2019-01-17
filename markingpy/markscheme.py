@@ -12,7 +12,7 @@ from .utils import build_style_calc, log_calls
 from .storage import get_db
 
 
-from . import finders
+from .import finders
 
 logger = logging.getLogger(__name__)
 
@@ -75,18 +75,15 @@ def import_markscheme(path):
         source = f.read()
     code = compile(source, path, "exec")
     ns = {}
-    exec(code, ns)
-
+    exec (code, ns)
     exercises = [ex for ex in ns.values() if isinstance(ex, Exercise)]
     try:
-        config = [
-            cf for cf in ns.values() if isinstance(cf, MarkschemeConfig)
-        ][0]
+        config = [cf for cf in ns.values() if isinstance(cf, MarkschemeConfig)][0]
     except IndexError:
         if not exercises:
             raise NotAMarkSchemeError
-        config = MarkschemeConfig()
 
+        config = MarkschemeConfig()
     marking_scheme = MarkingScheme(path, exercises, **config)
     marking_scheme.validate()
     return marking_scheme
@@ -140,21 +137,18 @@ class MarkingScheme:
         submission_path=None,
         finder=None,
         marks_db=None,
-        **kwargs
+        **kwargs,
     ):
         self.path = path
         content = f"{str(path)},{getpass.getuser()}".encode()
         self.unique_id = hashlib.md5(content).hexdigest()
-        logger.info(
-            "The unique identifier for this " f"markscheme is {self.unique_id}"
-        )
+        logger.info("The unique identifier for this " f"markscheme is {self.unique_id}")
         self.marks = marks
         self.exercises = exercises
         self.style_marks = style_marks
         self.score_style = score_style
         self.linter = linter
         self.style_calc = build_style_calc(style_formula)
-
         # Set up the finder for loading submissions.
         if finder is None and submission_path is None:
             self.finder = finders.DirectoryFinder(Path(".", "submissions"))
@@ -169,7 +163,6 @@ class MarkingScheme:
             )
 
         self.marks_db = Path(marks_db).expanduser()
-
         # Unused parameters
         for k in kwargs:
             warnings.warn(f"Unrecognised option {k}")
@@ -191,7 +184,6 @@ class MarkingScheme:
             # This also locks all exercises into submission mode.
             ex.validate()
             logger.debug(f'Validation of {ex.name}: Passed')
-
         if self.marks is not None:
             # If validation marks parameter provided, validate the mark totals
             marks_from_ex = sum(ex.marks for ex in self.exercises)
@@ -203,6 +195,7 @@ class MarkingScheme:
                     f'({total_marks_for_ms}) do not match the marks allocated '
                     f'in the marking scheme configuration ({self.marks})'
                 )
+
             logger.debug(f'Marking validation: Passed')
 
     def get_submissions(self):
@@ -222,18 +215,23 @@ class MarkingScheme:
         percentage = round(100 * score / total_score)
         if self.score_style == "basic":
             return str(score)
+
         elif self.score_style == "percentage":
             return f"{percentage}%"
+
         elif self.score_style == "marks/total":
             return f"{score} / {total_score}"
+
         elif self.score_style == "all":
             return f"{score} / {total_score} ({percentage}%)"
+
         else:
             return self.score_style.format(
                 score=score, total=total_score, percentage=percentage
             )
 
     def patched_import(self):
+
         def patched(*args, **kwargs):
             pass
 
@@ -243,6 +241,7 @@ class MarkingScheme:
     def sandbox(self, ns):
         try:
             yield
+
         finally:
             pass
 
@@ -256,29 +255,22 @@ class MarkingScheme:
         code = submission.compile()
         ns = {}
         with self.sandbox(ns):
-            exec(code, ns)
-
+            exec (code, ns)
         score = 0
         total_score = 0
         report = []
-        for mark, total_marks, feedback in (
-            ex.run(ns) for ex in self.exercises
-        ):
+        for mark, total_marks, feedback in (ex.run(ns) for ex in self.exercises):
             score += mark
             total_score += total_marks
             report.append(feedback)
         submission.add_feedback("tests", "\n".join(report))
-
         lint_report = self.linter(submission)
-
         style_score = round(self.style_calc(lint_report) * self.style_marks)
         score += style_score
         total_score += self.style_marks
         style_feedback = [
-            lint_report.read(),
-            f"Style score: {style_score} / {self.style_marks}",
+            lint_report.read(), f"Style score: {style_score} / {self.style_marks}"
         ]
-
         submission.add_feedback("style", "\n".join(style_feedback))
         submission.percentage = round(100 * score / total_score)
         submission.score = self.format_return(score, total_score)

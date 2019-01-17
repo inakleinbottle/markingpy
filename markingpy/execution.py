@@ -2,18 +2,14 @@
 import sys
 import logging
 from io import StringIO
-from contextlib import (
-    redirect_stdout,
-    redirect_stderr,
-    contextmanager,
-    ExitStack,
-)
+from contextlib import ( redirect_stdout, redirect_stderr, contextmanager, ExitStack)
 from warnings import catch_warnings
 
 logger = logging.getLogger(__name__)
 
 
 class ExecutionContext:
+
     def __init__(self):
         self.ran_successfully = True
         self.contexts = []
@@ -49,7 +45,6 @@ class ExecutionContext:
     def catch(self):
         self.do_set_up()
         warned = None
-
         # noinspection PyBroadException
         try:
             with ExitStack() as stack:
@@ -59,8 +54,10 @@ class ExecutionContext:
                 for ctx in self.contexts:
                     stack.enter_context(ctx)
                 yield
+
         except KeyboardInterrupt:
             raise
+
         except Exception:
             self.exception_handler()
         finally:

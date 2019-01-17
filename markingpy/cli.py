@@ -18,11 +18,8 @@ def run():
     General markingpy cli
     """
     config = GLOBAL_CONF
-
     parser = ArgumentParser()
-
     args = parser.parse_args()
-
     return 0
 
 
@@ -30,10 +27,13 @@ def is_markscheme(path):
     is_ms = False
     if not isinstance(path, Path):
         return is_ms
+
     if not path.name.endswith(".py"):
         return is_ms
+
     if not path.exists():
         return is_ms
+
     text = path.read_text()
     if "import markingpy" in text or "from markingpy import" in text:
         is_ms = True
@@ -41,10 +41,10 @@ def is_markscheme(path):
 
 
 class MarkschemeCommands:
+
     @staticmethod
     def run(markscheme, cli_args):
         parser = ArgumentParser()
-
         parser.add_argument("--style-formula", type=str)
         parser.add_argument("--style-marks", type=int)
         parser.add_argument(
@@ -55,7 +55,6 @@ class MarkschemeCommands:
         parser.add_argument("--submission-path", type=str)
         parser.add_argument("--marks-db", type=str)
         markscheme.update_config(vars(parser.parse_args(cli_args)))
-
         grader = Grader(markscheme)
         with grader:
             grader.grade_submissions()
@@ -65,7 +64,6 @@ class MarkschemeCommands:
         parser = ArgumentParser()
         parser.add_argument("--marks-db", type=str)
         markscheme.update_config(vars(parser.parse_args(cli_args)))
-
         subs = markscheme.get_db().fetch_all()
         for sid, perc, _ in subs:
             print(f"{sid:60}: {perc}%")
@@ -77,7 +75,6 @@ class MarkschemeCommands:
         parser = ArgumentParser()
         parser.add_argument("--marks-db", type=str)
         markscheme.update_config(vars(parser.parse_args(cli_args)))
-
         subs = markscheme.get_db().fetch_all()
         percs = [sub[1] for sub in subs]
         mean = statistics.mean(percs)
@@ -94,7 +91,6 @@ class MarkschemeCommands:
         parser.add_argument("path", default=".", nargs="?")
         args = vars(parser.parse_args(cli_args))
         path = Path(args.pop("path"))
-
         markscheme.update_config(args)
         for sub_id, _, fb in markscheme.get_db().fetch_all():
             (path / (sub_id + ".txt")).write_text(fb)
@@ -114,13 +110,11 @@ def main():
         return run()
 
     args = sys.argv[3:]
-
     try:
         cmd = sys.argv[2]
     except IndexError:
         cmd = "run"
         args = []
-
     if not is_markscheme(path):
         return run()
 

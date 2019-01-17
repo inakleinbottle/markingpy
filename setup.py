@@ -1,9 +1,7 @@
 from setuptools import setup
 
-
 with open("README.md", "rt", encoding="utf-8") as f:
     long_description = f.read()
-
 setup(
     name="markingpy",
     author="Sam Morley",

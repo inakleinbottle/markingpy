@@ -7,7 +7,6 @@ import logging
 from pathlib import Path
 from .submission import Submission
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -31,9 +30,7 @@ class Grader:
         """
         self.markscheme.run(submission)
         self.db.insert(
-            submission.reference,
-            submission.percentage,
-            submission.generate_report(),
+            submission.reference, submission.percentage, submission.generate_report()
         )
 
     def grade_submissions(self, **opts):
@@ -44,12 +41,13 @@ class Grader:
         for submission in self.submissions:
             self.grade_submission(submission, **opts)
 
+
     # context manager
     def __enter__(self):
-        #sys.path.insert(0, self.markscheme.submission_path)
+        # sys.path.insert(0, self.markscheme.submission_path)
         return self
 
     def __exit__(self, err_type, err_val, tb):
-        #sys.path.remove(self.markscheme.submission_path)
+        # sys.path.remove(self.markscheme.submission_path)
         for fn in self.at_exit:
             fn()

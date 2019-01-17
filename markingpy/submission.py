@@ -6,13 +6,12 @@ from .compiler import Compiler
 from .utils import log_calls
 
 logger = logging.getLogger(__name__)
-
 # INDENT = ' '*4
-
 Scores = namedtuple("Scores", ["raw", "total", "percentage", "formatted"])
 
 
 class Submission:
+
     def __init__(self, reference, source, **kwargs):
         self.reference = reference
         self.compiler = Compiler()
@@ -32,10 +31,7 @@ class Submission:
             if self.compiler.removed_chunks:
                 feedback = "\n".join(
                     (
-                        "Removed:\n"
-                        + c.content
-                        + "\n"
-                        + str(c.get_first_error().exc)
+                        "Removed:\n" + c.content + "\n" + str(c.get_first_error().exc)
                         for c in self.compiler.removed_chunks
                     )
                 )
@@ -57,6 +53,7 @@ class Submission:
         """
         if not self.code:
             raise RuntimeError("Submission has not yet been compiled.")
+
         if not self.score:
             raise RuntimeError("Submission has not yet been graded.")
 
@@ -71,5 +68,4 @@ class Submission:
             "\n" + "=" * 70 + "\n",
             "Final score {}".format(self.score),
         ]
-
         return "\n".join(lines)

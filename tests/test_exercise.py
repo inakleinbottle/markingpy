@@ -1,20 +1,14 @@
 # Test exercises
-
-
 import pytest
 from unittest import mock
 
-from markingpy.exercise import (
-    exercise,
-    Exercise,
-    ExerciseFeedback,
-    ExerciseError,
-)
+from markingpy.exercise import ( exercise, Exercise, ExerciseFeedback, ExerciseError)
 import markingpy.cases
 
 
 @pytest.fixture
 def ex_no_args():
+
     @exercise
     def test_func(a, b):
         return "Success"
@@ -25,12 +19,12 @@ def ex_no_args():
 
 @pytest.fixture
 def ex_with_args():
+
     @exercise(name="Test 1", descr="Descr")
     def test():
         return "Also Success"
 
     test.lock()
-
     return test
 
 
@@ -68,7 +62,6 @@ def test_adding_tests_to_ex(ex_with_args):
     t1 = ex_with_args.add_test_call(marks=1)
     assert isinstance(t1, markingpy.cases.CallTest)
     assert ex_with_args.total_marks == 1
-
     tc = markingpy.cases.TimingCase((1,), {"a": 1}, 5)
     t2 = ex_with_args.timing_test([tc], tolerance=0.2, marks=1)
     assert isinstance(t2, markingpy.cases.TimingTest)
@@ -103,7 +96,6 @@ def test_ex_add_bad_timing_tests(ex_with_args):
         assert False, "Timing test expects iterable"
     except Exception as err:
         assert isinstance(err, ValueError)
-
     try:
         ex_with_args.timing_test([None])
         assert False, "Timing test expects iterable of TimingCases"
@@ -113,6 +105,7 @@ def test_ex_add_bad_timing_tests(ex_with_args):
 
 @pytest.fixture
 def ex_with_component():
+
     @exercise
     def test():
         return "Success"
@@ -124,14 +117,11 @@ def ex_with_component():
 
 def test_running_of_test_components_success(ex_with_component):
     """Test running of tests and feedback"""
-
     submission_good_func = mock.MagicMock(return_value="Success")
-
     ns = {"test": submission_good_func}
     out = ex_with_component.run(ns)
     assert isinstance(out, ExerciseFeedback)
     submission_good_func.assert_called()
-
     score, tot, fb = out
     assert score == tot
     assert isinstance(fb, str)
@@ -139,14 +129,11 @@ def test_running_of_test_components_success(ex_with_component):
 
 def test_running_of_test_components_fail(ex_with_component):
     """Test running of tests and feedback"""
-
     submission_bad_func = mock.MagicMock(return_value="Also Success")
-
     ns = {"not_test": submission_bad_func}
     out = ex_with_component.run(ns)
     assert isinstance(out, ExerciseFeedback)
     submission_bad_func.assert_not_called()
-
     score, tot, fb = out
     assert score == 0
     assert isinstance(fb, str)

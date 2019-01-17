@@ -9,7 +9,6 @@ from .markscheme import mark_scheme
 from .cases import Test, CallTest, TimingTest, MethodTest, MethodTimingTest
 
 logging.basicConfig(level=LOGGING_LEVELS[GLOBAL_CONF["logging"]["level"]])
-
 __all__ = [
     "Grader",
     "mark_scheme",

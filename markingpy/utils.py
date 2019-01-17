@@ -11,12 +11,10 @@ from time import time
 from .config import LOGGING_LEVELS
 
 logger = logging.getLogger(__name__)
-
 try:
     import resource
 except ImportError:
     resource = None
-
 try:
     import signal
 except ImportError:
@@ -33,9 +31,10 @@ def log_calls(level=None):
         fn = None
 
     def decorator(func):
+
         @wraps(func)
         def wrapper(*args, **kwargs):
-            #msg = "Call {}(".format(func.__name__) + ", ".join(map(repr, args))
+            # msg = "Call {}(".format(func.__name__) + ", ".join(map(repr, args))
             #if args and kwargs:
             #    msg += ", "
             #msg += ", ".join(
@@ -43,8 +42,7 @@ def log_calls(level=None):
             #)
             #msg += ")"
             msg = (
-                f'Call {func.__name__}'
-                f'({", ".join(str(arg)[:5] for arg in args)})'
+                f'Call {func.__name__}' f'({", ".join(str(arg)[:5] for arg in args)})'
             )
             logger.log(level, msg)
             return func(*args, **kwargs)
@@ -53,6 +51,7 @@ def log_calls(level=None):
 
     if fn is not None:
         return decorator(fn)
+
     else:
         return decorator
 
@@ -73,6 +72,7 @@ def build_style_calc(formula):
     def calculator(report):
         try:
             return max(0.0, eval(formula, report.stats))
+
         except ZeroDivisionError:
             return 0.0
 
@@ -80,11 +80,7 @@ def build_style_calc(formula):
 
 
 DEFAULT_STYLE_FORMULA = (
-    "1. - float(5*error"
-    " + warning"
-    " + refactor"
-    " + convention)"
-    " / statement"
+    "1. - float(5*error" " + warning" " + refactor" " + convention)" " / statement"
 )
 default_style_calc = build_style_calc(DEFAULT_STYLE_FORMULA)
 
@@ -104,6 +100,7 @@ def time_run(func, args, kwargs):
         func(*args, **kwargs)
     except Exception:
         return None
+
     runtime = time() - start_time
     logger.debug(f"Timed run {func.__name__}: {runtime}")
     return runtime
@@ -129,6 +126,7 @@ if resource is not None and signal is not None:
         signal.signal(signal.SIGXCPU, time_exceeded)
         try:
             yield
+
         finally:
             resource.setrlimit(resource.RLIMIT_CPU, (soft, hard))
 

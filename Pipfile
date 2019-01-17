@@ -4,13 +4,16 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-pytest = "*"
-coverage = "*"
-twine = "*"
-sphinx = "*"
-flake8 = "*"
-tox = "*"
+pytest = "==4.1.0"
+coverage = "==4.5.2"
+twine = "==1.12.1"
+sphinx = "==1.8.3"
+flake8 = "==2.6.0"
+tox = "==3.7.0"
+black = "==18.3a0"
+pytest-cov = "*"
+pytest-pycharm = "*"
 
 [packages]
-pylint = "*"
-astor = "*"
+pylint = "==2.2.0"
+astor = "==0.7.1"

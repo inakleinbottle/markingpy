@@ -11,27 +11,22 @@ from markingpy.utils import build_style_calc
 
 
 class TestStyleCalculator(TestCase):
+
     def test_style_calc_builder(self):
         """Test the style calculator factory."""
-
         test_dict = {
-            "error": 1,
-            "warning": 2,
-            "refactor": 0,
-            "convention": 4,
-            "statement": 15,
+            "error": 1, "warning": 2, "refactor": 0, "convention": 4, "statement": 15
         }
-
         calc = build_style_calc(
             "(error + warning + refactor + convention)" "/statement"
         )
         mock = MagicMock()
         mock.stats = test_dict
-
         self.assertEqual(calc(mock), 7 / 15)
 
 
 class TestSubmissionClass(TestCase):
+
     def setUp(self):
         self.submission = Submission("testpath", "")
 
@@ -45,14 +40,11 @@ class TestSubmissionClass(TestCase):
         compile_mock = MagicMock(return_value=(None, None))
         compile_mock.removed_chunks = []
         self.submission.compiler = compile_mock
-
         self.submission.compile()
-
         compile_mock.assert_called_with(dedent(source))
         self.assertIn("compilation", self.submission.feedback)
         self.assertEqual(
-            self.submission.feedback["compilation"],
-            "No compilation errors found.",
+            self.submission.feedback["compilation"], "No compilation errors found."
         )
 
     def test_compilation_tab_error(self):
@@ -68,7 +60,6 @@ class TestSubmissionClass(TestCase):
         \treturn None
         """
         )
-
         self.submission.source = self.submission.raw_source = source
         compile_mock = MagicMock(return_value=(None, None))
         removed_chunk = MagicMock()
@@ -81,11 +72,8 @@ class TestSubmissionClass(TestCase):
         \treturn None"""
         )
         compile_mock.removed_chunks = [removed_chunk]
-
         self.submission.compiler = compile_mock
-
         self.submission.compile()
-
         compile_mock.assert_called_with(dedent(source))
         self.assertIn("compilation", self.submission.feedback)
         self.assertIsInstance(self.submission.feedback["compilation"], str)

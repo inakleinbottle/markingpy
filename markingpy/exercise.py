@@ -10,12 +10,10 @@ from inspect import isfunction, isclass
 
 from .cases import Test, TimingTest, CallTest, Call
 from .utils import log_calls
-from . import cases
+from .import cases
 
 logger = logging.getLogger(__name__)
-
 INDENT = " " * 4
-
 _exercises = weakref.WeakKeyDictionary()
 
 
@@ -23,9 +21,7 @@ class ExerciseBase:
 
     def __init__(self):
         ex_no = min(
-            i
-            for i in range(1, len(_exercises) + 2)
-            if i not in _exercises.values()
+            i for i in range(1, len(_exercises) + 2) if i not in _exercises.values()
         )
         _exercises[self] = ex_no
 
@@ -37,11 +33,10 @@ _exercises = weakref.WeakKeyDictionary()
 
 
 class ExerciseBase:
+
     def __init__(self):
         ex_no = min(
-            i
-            for i in range(1, len(_exercises) + 2)
-            if i not in _exercises.values()
+            i for i in range(1, len(_exercises) + 2) if i not in _exercises.values()
         )
         _exercises[self] = ex_no
 
@@ -82,9 +77,7 @@ class Exercise(ExerciseBase):
     :param descr: Short description of the test to be printed in the feedback.
     """
 
-    def __init__(
-        self, function_or_class, name=None, descr=None, marks=None, **args
-    ):
+    def __init__(self, function_or_class, name=None, descr=None, marks=None, **args):
         super().__init__()
         wraps(function_or_class)(self)
         self.tests = []
@@ -114,9 +107,7 @@ class Exercise(ExerciseBase):
         :return:
         """
         self.lock()
-
         total_marks = self.total_marks
-
         if self.marks is not None:
             if not self.marks == total_marks:
                 raise ExerciseError(
@@ -124,11 +115,10 @@ class Exercise(ExerciseBase):
                     f"Total marks ({total_marks}) from tests does not match "
                     f"marks ({self.marks}) allocated to exercise."
                 )
-        self.marks = total_marks
 
+        self.marks = total_marks
         ns = {self.func.__name__: self.func}
         result = self.run(ns)
-
         if not result.total_marks == self.marks:
             raise ExerciseError(
                 f'{self.name} Error:\n'
@@ -168,6 +158,7 @@ class Exercise(ExerciseBase):
         self.exc_func = submission_func
         try:
             yield
+
         finally:
             self.exc_func = self.func
 
@@ -190,7 +181,6 @@ class Exercise(ExerciseBase):
         """
         if cls is None:
             cls = Test
-
         test = cls(*args, exercise=self, name=name, **params)
         self.tests.append(test)
         return test
@@ -212,7 +202,6 @@ class Exercise(ExerciseBase):
         """
         if cls is None:
             cls = Test
-
         if isinstance(name, str):
             kwargs["name"] = name
             name = None
@@ -222,6 +211,7 @@ class Exercise(ExerciseBase):
 
         if name is None:
             return decorator
+
         elif isfunction(name):
             return decorator(name)
 
@@ -243,21 +233,16 @@ class Exercise(ExerciseBase):
             feedback.extend(r.feedback for r in results)
             score = sum(r.mark for r in results)
             logger.info(f"Score for ex: {score} / {self.total_marks}")
-            feedback.append(
-                f"Score for {self.name}: {score} / {self.total_marks}"
-            )
+            feedback.append(f"Score for {self.name}: {score} / {self.total_marks}")
+            return ExerciseFeedback(score, self.total_marks, "\n".join(feedback))
 
-            return ExerciseFeedback(
-                score, self.total_marks, "\n".join(feedback)
-            )
         else:
             msg = "Function {} was not found in submission."
-            return ExerciseFeedback(
-                0, self.total_marks, msg.format(self.func.__name__)
-            )
+            return ExerciseFeedback(0, self.total_marks, msg.format(self.func.__name__))
 
 
 class ExerciseFunctionProxy:
+
     def add_test(self, *args, **kwargs):
         pass
 
@@ -274,9 +259,7 @@ class ExerciseFunctionProxy:
         """
         if isinstance(call_params, Call):
             call_params, call_kwparams = call_params
-        return self.add_test(
-            call_params, call_kwparams, cls=CallTest, **kwargs
-        )
+        return self.add_test(call_params, call_kwparams, cls=CallTest, **kwargs)
 
     @log_calls("info")
     def timing_test(self, timing_cases, tolerance=0.2, **kwargs):
@@ -303,11 +286,11 @@ class FunctionExercise(Exercise, ExerciseFunctionProxy):
 
     .. versionadded:: 0.2.0
     """
-
     set_function = Exercise.set_to_submission
 
 
 class ExerciseMethodProxy(ExerciseFunctionProxy):
+
     def __init__(self, cls, parent, inst_call, name):
         wraps(getattr(cls, name))(self)
         self.name = name
@@ -324,6 +307,7 @@ class ExerciseMethodProxy(ExerciseFunctionProxy):
                 inst_with_kwargs=self.inst_call.kwargs,
                 **kwargs,
             )
+
         elif cls is cases.TimingTest:
             return self.parent.method_timing_test(
                 self.name,
@@ -332,11 +316,15 @@ class ExerciseMethodProxy(ExerciseFunctionProxy):
                 isnt_with_kwargs=self.inst_call.kwargs,
                 **kwargs,
             )
+
         raise TypeError
+
+
 
 
 # noinspection PyProtectedMember
 class ExerciseInstance:
+
     def __init__(self, parent, cls, *args, **kwargs):
         self.__call_args = Call(args, kwargs)
         self.__parent = parent
@@ -344,9 +332,8 @@ class ExerciseInstance:
 
     def __getattr__(self, item):
         if not hasattr(self.__cls, item):
-            raise AttributeError(
-                f"{self.__cls} does not have attribute {item}"
-            )
+            raise AttributeError(f"{self.__cls} does not have attribute {item}")
+
         cls_attr = getattr(self.__cls, item)
         if isfunction(cls_attr):
             return ExerciseMethodProxy(
@@ -470,9 +457,11 @@ def exercise(name=None, cls=None, **args):
             cls = ClassExercise
         else:
             raise TypeError("Expecting function or class.")
+
         return cls(fn, **args)
 
     if name is None:
         return decorator
+
     else:
         return decorator(name)

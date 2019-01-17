@@ -20,6 +20,7 @@ class LinterReport:
     def read(self):
         if self.content:
             return "\n".join(self.content)
+
         else:
             return "No issues found"
 

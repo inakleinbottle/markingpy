@@ -1,19 +1,15 @@
 """
 Helper module to compile files that might contain syntax errors.
 """
-
 # Based on the Python Standard Library code module.
-
 from codeop import PyCF_DONT_IMPLY_DEDENT
 from collections import namedtuple, deque
-
 
 # Chunk = namedtuple('Chunk', ('line_start', 'line_end', 'content'))
 Reason = namedtuple("Reason", ("removed_at", "exc"))
 
 
 class Chunk:
-
     __slots__ = ["line_start", "line_end", "content"]
 
     def __init__(self, line_start, line_end, content):
@@ -26,17 +22,16 @@ class Chunk:
 
     def __repr__(self):
         return (
-            self.__class__.__name__
-            + "("
-            + repr(self.line_start)
-            + repr(self.line_end)
-            + repr(self.content)
-            + ")"
+            self.__class__.__name__ +
+            "(" +
+            repr(self.line_start) +
+            repr(self.line_end) +
+            repr(self.content) +
+            ")"
         )
 
 
 class RemovedChunk(Chunk):
-
     __slots__ = ["line_start", "line_end", "content", "reasons"]
 
     def __init__(self, line_start, line_end, content):
@@ -45,8 +40,8 @@ class RemovedChunk(Chunk):
 
     def is_adjacent(self, other):
         return (
-            abs(other.line_end - self.line_start) <= 1
-            or abs(other.line_start - self.line_end) <= 1
+            abs(other.line_end - self.line_start) <= 1 or
+            abs(other.line_start - self.line_end) <= 1
         )
 
     def add_reason(self, *reason):
@@ -67,11 +62,11 @@ class RemovedChunk(Chunk):
             start = self.line_start
             end = other.line_end
         new_removed = RemovedChunk(start, end, content)
-        new_removed.add_reason(*self.reasons, *other.reasons)
+        new_removed.add_reason(* self.reasons, * other.reasons)
         return new_removed
 
     def get_first_error(self):
-        return min(self.reasons, key=lambda r: r.removed_at)
+        return min(self.reasons, key= lambda r: r.removed_at)
 
 
 class Compiler:
@@ -106,7 +101,7 @@ class Compiler:
         mode="exec",
         flags=0,
         dont_inherit=False,
-        optimize=-1
+        optimize= -1,
     ):
         return self.compile_source(
             source, filename, mode, flags, dont_inherit, optimize
@@ -119,14 +114,9 @@ class Compiler:
         lines = chunk.content.splitlines()
         reason.lineno = chunk.line_start + lineno - 1
         self.removed += 1
-
-        removed_chunk = RemovedChunk(
-            reason.lineno, reason.lineno, lines[lineno - 1]
-        )
+        removed_chunk = RemovedChunk(reason.lineno, reason.lineno, lines[lineno - 1])
         removed_chunk.add_reason(Reason(self.removed, reason))
-        adjacent = [
-            c for c in self.removed_chunks if c.is_adjacent(removed_chunk)
-        ]
+        adjacent = [c for c in self.removed_chunks if c.is_adjacent(removed_chunk)]
         if not adjacent:
             self.removed_chunks.append(removed_chunk)
         else:
@@ -134,12 +124,9 @@ class Compiler:
                 removed_chunk = c.join(removed_chunk)
                 self.removed_chunks.remove(c)
             self.removed_chunks.append(removed_chunk)
-
         # print('Removing line', reason.lineno, lines[lineno-1])
         return (
-            Chunk(
-                chunk.line_start, lineno - 2, "\n".join(lines[: lineno - 1])
-            ),
+            Chunk(chunk.line_start, lineno - 2, "\n".join(lines[: lineno - 1])),
             Chunk(reason.lineno, chunk.line_end, "\n".join(lines[lineno:])),
         )
 
@@ -171,9 +158,7 @@ class Compiler:
         if after.content:
             self.to_process.append(after)
 
-    def compile_source(
-        self, source, filename, mode, flags, dont_inherit, optimize
-    ):
+    def compile_source(self, source, filename, mode, flags, dont_inherit, optimize):
         """
         Compile the source ignoring any compilation errors.
 
@@ -197,4 +182,4 @@ class Compiler:
         )
 
     def sort_chunks(self):
-        self.chunks.sort(key=lambda c: c.line_start)
+        self.chunks.sort(key= lambda c: c.line_start)

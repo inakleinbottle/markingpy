@@ -10,6 +10,7 @@ from markingpy import execution
 
 @pytest.fixture
 def call_test_m():
+
     @exercise
     def test_func(input):
         return input
@@ -45,14 +46,11 @@ def test_running_of_test_method(call_test_m):
         return "Other " + str(input)
 
     ctx = call_test_m.create_test(other)
-
     output = None
     with ctx.catch():
         output = call_test_m.run(other)
-
     assert output is not None
     assert not output
-
     # test variables on executor
     assert ctx.error is None
     assert ctx.warnings == []
@@ -67,13 +65,10 @@ def test_running_of_test_method_bad_function(call_test_m):
         raise exc
 
     ctx = call_test_m.create_test(other)
-
     output = None
     with ctx.catch():
         output = call_test_m.run(other)
-
     assert output is None, "Test should not have run"
-
     # test variables on executor
     assert ctx.error[1] is exc
     assert ctx.warnings == []
@@ -82,18 +77,16 @@ def test_running_of_test_method_bad_function(call_test_m):
 
 
 def test_call_test_run_with_print(call_test_m):
+
     def other(input):
         print(input)
         return output
 
     ctx = call_test_m.create_test(other)
-
     output = None
     with ctx.catch():
         output = call_test_m.run(other)
-
     assert output is not None
-
     # test variables on executor
     assert ctx.error is None
     assert ctx.warnings == []
@@ -102,6 +95,7 @@ def test_call_test_run_with_print(call_test_m):
 
 
 def test_call_test_run_through_call(call_test_m):
+
     def other(input):
         return "Other" + str(input)
 
@@ -114,6 +108,7 @@ def test_call_test_run_through_call(call_test_m):
 
 @pytest.fixture
 def timing_test_m():
+
     @exercise
     def test_func(input):
         sleep(input)
@@ -123,7 +118,6 @@ def timing_test_m():
         cases.TimingCase((0.02,), {}, 0.02),
         cases.TimingCase((0.1,), {}, 0.1),
     ]
-
     return cases.TimingTest(timing_cases, 0.2, exercise=test_func)
 
 
@@ -137,10 +131,7 @@ def test_timing_test_setup_common_attributes(timing_test_m):
 def test_timing_test_specific_attributes(timing_test_m):
     assert isinstance(timing_test_m.cases, list)
     assert len(timing_test_m.cases) == 3
-    assert all(
-        isinstance(case, cases.TimingCase) for case in timing_test_m.cases
-    )
-
+    assert all(isinstance(case, cases.TimingCase) for case in timing_test_m.cases)
     assert timing_test_m.tolerance == 0.2
 
 
@@ -158,11 +149,9 @@ def test_timing_test_running(timing_test_m):
         sleep(input)
 
     ctx = timing_test_m.create_test(other)
-
     output = None
     with ctx.catch():
         output = timing_test_m.run(other)
-
     assert test_calls == [0.01, 0.02, 0.1]
     assert output is not None
 
@@ -174,11 +163,9 @@ def test_timing_test_function_exception(timing_test_m):
         raise exc
 
     ctx = timing_test_m.create_test(other)
-
     output = None
     with ctx.catch():
         output = timing_test_m.run(other)
-
     assert output is None
     assert isinstance(ctx.error[1], cases.ExecutionFailedError)
     assert ctx.warnings == []
@@ -188,6 +175,7 @@ def test_timing_test_function_exception(timing_test_m):
 
 @pytest.fixture
 def custom_test_m():
+
     @exercise
     def test_func(input):
         print("Output")
@@ -195,10 +183,8 @@ def custom_test_m():
 
     def custom_func():
         print("Feedback")
-
         res1 = test_func("test")  # True
         res2 = test_func("not test")  # false
-
         return res1 and not res2
 
     return cases.Test(custom_func, exercise=test_func)
@@ -218,6 +204,7 @@ def test_custom_test_create_execution_context(custom_test_m):
 
 
 def test_custom_test_run_test_good_func(custom_test_m):
+
     def other(input):
         print("Output")
         return input == "test"
@@ -230,16 +217,13 @@ def test_custom_test_run_test_good_func(custom_test_m):
         return rv
 
     ctx = custom_test_m.create_test(wrapper)
-
     output = None
     with ctx.catch():
         output = custom_test_m.run(wrapper)
         tested_func = custom_test_m.exercise.exc_func
-
     assert output is not None
     assert output
     assert tested_func is not custom_test_m.exercise.func
-
     assert ctx.error is None
     assert ctx.warnings == []
     assert ctx.stdout.getvalue() == "Feedback\n"

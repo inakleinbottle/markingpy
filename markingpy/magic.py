@@ -21,6 +21,7 @@ class BaseDescriptor:
 
 
 class SafeStrDescriptor(BaseDescriptor):
+
     def __set__(self, instance, val, typ=None):
         if isinstance(val, str):
             val = [val]
@@ -28,6 +29,7 @@ class SafeStrDescriptor(BaseDescriptor):
 
 
 class SafeNoneDescriptor(BaseDescriptor):
+
     def __set__(self, instance, val, typ=None):
         if val is None:
             val = []
@@ -43,12 +45,15 @@ class KWARGS(SafeNoneDescriptor):
 
 
 class DefaultGetterDescriptor(BaseDescriptor):
+
     def __set__(self, instance, val, typ=None):
         if val is not None:
             return super().__set__(instance, val, typ)
+
         getter = getattr(instance, f"get_{self.name}", None)
         if getter is not None:
             return super().__set__(instance, getter(), typ)
+
         return super().__set__(instance, None, typ)
 
 
@@ -59,7 +64,9 @@ def common(cast=None):
 
 
 def method_marks(marks):
+
     def deco(func):
+
         @wraps(func)
         def wrapper(inst, *args, **kwargs):
             if not func in inst.__marked_methods:
@@ -71,15 +78,11 @@ def method_marks(marks):
     return deco
 
 
-_MAGIC = {
-    "args": ARGS,
-    "kwargs": KWARGS,
-    "marks": method_marks,
-    "common": common,
-}
+_MAGIC = {"args": ARGS, "kwargs": KWARGS, "marks": method_marks, "common": common}
 
 
 class MagicMeta(type):
+
     @classmethod
     def __prepare__(cls, *args):
         return ChainMap({}, _MAGIC)
@@ -89,6 +92,7 @@ class MagicMeta(type):
 
 
 class MagicBase(metaclass=MagicMeta):
+
     def __init_subclass__(cls, **kwargs):
         annotations = cls.__dict__.get("__annotations__", {})
         for name, val in annotations.items():

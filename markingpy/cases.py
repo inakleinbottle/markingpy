@@ -10,11 +10,9 @@ from typing import Callable
 
 from .utils import log_calls, time_run
 from .execution import ExecutionContext
-from . import magic
+from .import magic
 
 logger = logging.getLogger(__name__)
-
-
 TestFeedback = namedtuple("TestFeedback", ("test", "mark", "feedback"))
 
 
@@ -27,12 +25,10 @@ class BaseTest(magic.MagicBase):
     :param descr: Short description to be displayed in feedback.
     :param marks: Marks to award for this component, default=0.
     """
-
     name: common(str)
     descr: common(str)
     marks: common(None)
     __enforced = ["create_test", "run"]
-
     indent = " " * 4
 
     def __init__(self, *, name=None, descr=None, marks=0, exercise=None):
@@ -96,9 +92,7 @@ class BaseTest(magic.MagicBase):
         return self.marks if success else 0
 
     def format_error(self, err):
-        return "\n.".join(
-            self.indent + line for line in str(err[1]).splitlines()
-        )
+        return "\n.".join(self.indent + line for line in str(err[1]).splitlines())
 
     def format_warnings(self, warnings):
         return "\n".join(
@@ -128,11 +122,9 @@ class BaseTest(magic.MagicBase):
             feedback.append(self.format_error(err))
         if warnings:
             feedback.append(self.format_warnings(warnings))
-
         stdout = context.stdout.getvalue().strip()
         if stdout:
             feedback.append(self.format_stdout(stdout))
-
         return TestFeedback(self, marks, "\n".join(feedback))
 
 
@@ -140,25 +132,25 @@ class ExecutionFailedError(Exception):
     pass
 
 
+
+
 # noinspection PyUnresolvedReferences
 class CallTest(BaseTest):
-
     call_args: args
     call_kwargs: kwargs
 
     def __init__(self, call_args, call_kwargs, *args, **kwargs):
         self.call_args = call_args
         self.call_kwargs = call_kwargs
-
         super().__init__(*args, **kwargs)
-        self.expected = self.exercise.func(*self.call_args, **self.call_kwargs)
+        self.expected = self.exercise.func(* self.call_args, ** self.call_kwargs)
 
     @log_calls
     def create_test(self, other):
         return ExecutionContext()
 
     def run(self, other):
-        output = other(*self.call_args, **self.call_kwargs)
+        output = other(* self.call_args, ** self.call_kwargs)
         return output == self.expected
 
 
@@ -190,7 +182,6 @@ class TimingTest(BaseTest):
                 ]
         else:
             cases = None
-
         if not cases:
             raise ValueError("Cases not correctly defined.")
 
@@ -208,11 +199,13 @@ class TimingTest(BaseTest):
             runtime = time_run(other, args, kwargs)
             if runtime is None:
                 raise ExecutionFailedError
+
             success ^= runtime <= (1.0 + self.tolerance) * target
         return success
 
 
 class Test(BaseTest):
+
     def __init__(self, test_func: Callable[..., bool], *args, **kwargs):
         self.test_func = test_func
         super().__init__(*args, **kwargs)
@@ -230,6 +223,8 @@ class Test(BaseTest):
         return self.test_func()
 
 
+
+
 # noinspection PyUnresolvedReferences
 class MethodTest(BaseTest):
     call_params: args
@@ -245,7 +240,7 @@ class MethodTest(BaseTest):
         inst_args=None,
         inst_kwargs=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         self.method = method
         self.call_args = call_params
@@ -258,10 +253,12 @@ class MethodTest(BaseTest):
         return ExecutionContext()
 
     def run(self, other):
-        instance = other(*self.inst_args, **self.inst_kwargs)
+        instance = other(* self.inst_args, ** self.inst_kwargs)
         func = getattr(instance, self.method)
-        output = func(*self.call_args, **self.call_kwargs)
+        output = func(* self.call_args, ** self.call_kwargs)
         return output == self.expected
+
+
 
 
 # noinspection PyUnresolvedReferences
@@ -269,8 +266,7 @@ class MethodTimingTest(BaseTest):
     inst_args: args
     inst_kwargs: kwargs
 
-    def __init__(self, method, cases, tolerance, inst_args, inst_kwargs,
-                 **kwargs):
+    def __init__(self, method, cases, tolerance, inst_args, inst_kwargs, **kwargs):
         if isinstance(cases, dict):
             # cases from dict - preset targets
             cases = [
@@ -289,7 +285,6 @@ class MethodTimingTest(BaseTest):
                 ]
         else:
             cases = None
-
         if not cases:
             raise ValueError("Cases not correctly defined.")
 
@@ -304,12 +299,13 @@ class MethodTimingTest(BaseTest):
         return ExecutionContext()
 
     def run(self, other):
-        instance = other(*self.inst_args, **self.inst_kwargs)
+        instance = other(* self.inst_args, ** self.inst_kwargs)
         func = getattr(instance, self.method)
         success = True
         for args, kwargs, target in self.cases:
             runtime = time_run(func, args, kwargs)
             if runtime is None:
                 raise ExecutionFailedError
+
             success ^= runtime <= (1.0 + self.tolerance) * target
         return success
