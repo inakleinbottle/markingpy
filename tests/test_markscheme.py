@@ -14,8 +14,9 @@ class ImportMarkschemeTests(unittest.TestCase):
     def setUp(self):
         source = """\
         from markingpy import mark_scheme, exercise
+        from markingpy.finders import NullFinder
         
-        ms = mark_scheme()
+        ms = mark_scheme(finder=NullFinder())
         
         @exercise
         def exercise_1():

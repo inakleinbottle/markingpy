@@ -33,8 +33,7 @@ class TestStyleCalculator(TestCase):
 
 class TestSubmissionClass(TestCase):
     def setUp(self):
-        with patch("builtins.open", mock_open(read_data="")) as m_open:
-            self.submission = Submission(Path("testpath"))
+        self.submission = Submission("testpath", "")
 
     def test_compilation_of_source(self):
         """Test compilation of good source code."""
@@ -42,12 +41,12 @@ class TestSubmissionClass(TestCase):
         def func_1():
             pass
         """
-        self.submission.source = dedent(source)
-        compile_mock = MagicMock()
+        self.submission.source = self.submission.raw_source = dedent(source)
+        compile_mock = MagicMock(return_value=(None, None))
         compile_mock.removed_chunks = []
         self.submission.compiler = compile_mock
 
-        code = self.submission.compile()
+        self.submission.compile()
 
         compile_mock.assert_called_with(dedent(source))
         self.assertIn("compilation", self.submission.feedback)
@@ -70,8 +69,8 @@ class TestSubmissionClass(TestCase):
         """
         )
 
-        self.submission.source = source
-        compile_mock = MagicMock()
+        self.submission.source = self.submission.raw_source = source
+        compile_mock = MagicMock(return_value=(None, None))
         removed_chunk = MagicMock()
         err = MagicMock()
         err.exc = "TabError"

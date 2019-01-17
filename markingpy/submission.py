@@ -1,6 +1,6 @@
 import os
 import logging
-
+from collections import namedtuple
 
 from .compiler import Compiler
 from .utils import log_calls
@@ -9,14 +9,14 @@ logger = logging.getLogger(__name__)
 
 # INDENT = ' '*4
 
+Scores = namedtuple("Scores", ["raw", "total", "percentage", "formatted"])
+
 
 class Submission:
-    def __init__(self, path, **kwargs):
-        self.path = path
-        with open(path, "r") as f:
-            self.source = f.read()
-        self.reference = path.name[:-3]
+    def __init__(self, reference, source, **kwargs):
+        self.reference = reference
         self.compiler = Compiler()
+        self.source = self.raw_source = source
         self.code = None
         self.score = None
         self.percentage = 0
@@ -28,7 +28,7 @@ class Submission:
         Compile the submission source code.
         """
         if not self.code:
-            self.code = self.compiler(self.source)
+            self.source, self.code = self.compiler(self.raw_source)
             if self.compiler.removed_chunks:
                 feedback = "\n".join(
                     (

@@ -189,10 +189,11 @@ class Compiler:
         while self.to_process:
             self.try_compile(self.to_process.popleft())
         self.sort_chunks()
-        new_source = "\n".join(map(lambda c: c.content, self.chunks))
+        new_source = "\n".join(c.content for c in self.chunks)
         # noinspection PyArgumentList
-        return compile(
-            new_source, filename, mode, flags, dont_inherit, optimize
+        return (
+            new_source,
+            compile(new_source, filename, mode, flags, dont_inherit, optimize),
         )
 
     def sort_chunks(self):
