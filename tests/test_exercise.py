@@ -2,12 +2,18 @@
 import pytest
 from unittest import mock
 
-from markingpy.exercises import (exercise, Exercise, ExerciseFeedback, ExerciseError)
+import markingpy
+from markingpy.exercises import (exercise, Exercise, ExerciseFeedback)
 import markingpy.cases
 
 
 @pytest.fixture
-def ex_no_args():
+def no_add_exercises():
+    markingpy.NO_ADD_EXERCISES = True
+    return None
+
+@pytest.fixture
+def ex_no_args(no_add_exercises):
 
     @exercise
     def test_func(a, b):
@@ -18,7 +24,7 @@ def ex_no_args():
 
 
 @pytest.fixture
-def ex_with_args():
+def ex_with_args(no_add_exercises):
 
     @exercise(name="Test 1", descr="Descr")
     def test():
@@ -104,7 +110,7 @@ def test_ex_add_bad_timing_tests(ex_with_args):
 
 
 @pytest.fixture
-def ex_with_component():
+def ex_with_component(no_add_exercises):
 
     @exercise
     def test():

@@ -54,8 +54,6 @@ def ms():
         # noinspection PyUnresolvedReferences
         style_formula = markingpy.utils.DEFAULT_STYLE_FORMULA
         ms = markscheme.MarkingScheme(
-            'test',
-            [],
             marks_db='dbpath',
             finder=finders.NullFinder(),
             style_formula=style_formula,
