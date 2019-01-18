@@ -1,4 +1,8 @@
+import random
+
 import pytest
+from unittest import mock
+from collections import namedtuple
 from contextlib import redirect_stdout
 from io import StringIO
 from time import sleep
@@ -7,6 +11,11 @@ from markingpy.exercise import exercise
 from markingpy import cases
 from markingpy import execution
 
+Call = namedtuple('Call', ['args', 'kwargs'])
+
+
+def call(*args, **kwargs):
+    return Call(args, kwargs)
 
 @pytest.fixture
 def call_test_m():
@@ -227,3 +236,41 @@ def test_custom_test_run_test_good_func(custom_test_m):
     assert ctx.error is None
     assert ctx.warnings == []
     assert ctx.stdout.getvalue() == "Feedback\n"
+
+
+@pytest.fixture
+def call_test_func():
+
+    @exercise
+    def test_func(a):
+        if isinstance(a, int):
+            return str(a)
+        elif isinstance(a, float):
+            return round(a)
+        elif isinstance(a, str):
+            return a
+        return repr(a)
+
+    return cases.CallTest(*call(1), exercise=test_func,
+                          marks=1)
+
+
+def test_call_test_running_funcs(call_test_func):
+
+    call_sig = call(1)
+
+    test_cases = [
+            ('1', 1),
+            (1, 0),
+            (1.0, 0),
+            ('2', 0),
+            (repr(cases), 0),
+            ]
+
+    for ret, res in test_cases:
+        test_func = mock.MagicMock(return_value=ret)
+        result = call_test_func(test_func)
+
+        test_func.assert_called_with(*call_sig.args, **call_sig.kwargs)
+        assert result.mark == res
+

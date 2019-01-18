@@ -132,8 +132,6 @@ class ExecutionFailedError(Exception):
     pass
 
 
-
-
 # noinspection PyUnresolvedReferences
 class CallTest(BaseTest):
     call_args: args
@@ -143,14 +141,14 @@ class CallTest(BaseTest):
         self.call_args = call_args
         self.call_kwargs = call_kwargs
         super().__init__(*args, **kwargs)
-        self.expected = self.exercise.func(* self.call_args, ** self.call_kwargs)
+        self.expected = self.exercise.func(*self.call_args, **self.call_kwargs)
 
     @log_calls
     def create_test(self, other):
         return ExecutionContext()
 
     def run(self, other):
-        output = other(* self.call_args, ** self.call_kwargs)
+        output = other(*self.call_args, **self.call_kwargs)
         return output == self.expected
 
 
