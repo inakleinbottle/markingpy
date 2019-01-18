@@ -8,12 +8,7 @@ from pathlib import Path
 
 from .import submission
 
-__all__ = [
-    "BaseFinder",
-    "DirectoryFinder",
-    "SQLiteFinder",
-    "NullFinder",
-]
+__all__ = ["BaseFinder", "DirectoryFinder", "SQLiteFinder", "NullFinder"]
 
 
 class BaseFinder(ABC):
@@ -61,7 +56,8 @@ class SQLiteFinder(BaseFinder):
 
         conn = sqlite3.connect(self.path)
         for ref, source in conn.execute(
-            f"SELECT {self.ref_field}, {self.source_field}" f" FROM {self.table}"
+            f"SELECT {self.ref_field}, {self.source_field}"
+            f" FROM {self.table}"
         ):
             yield submission.Submission(ref, source)
 

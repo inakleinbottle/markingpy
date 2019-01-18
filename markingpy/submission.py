@@ -8,10 +8,7 @@ from .utils import log_calls
 logger = logging.getLogger(__name__)
 # INDENT = ' '*4
 Scores = namedtuple("Scores", ["raw", "total", "percentage", "formatted"])
-
-__all__ = [
-    'Submission',
-]
+__all__ = ['Submission']
 
 
 class Submission:
@@ -35,7 +32,10 @@ class Submission:
             if self.compiler.removed_chunks:
                 feedback = "\n".join(
                     (
-                        "Removed:\n" + c.content + "\n" + str(c.get_first_error().exc)
+                        "Removed:\n" +
+                        c.content +
+                        "\n" +
+                        str(c.get_first_error().exc)
                         for c in self.compiler.removed_chunks
                     )
                 )

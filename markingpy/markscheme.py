@@ -2,6 +2,9 @@ import logging
 import warnings
 import getpass
 import hashlib
+import importlib.util
+import inspect
+import sys
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -11,11 +14,9 @@ from .linters import linter
 from .utils import build_style_calc, log_calls
 from .storage import get_db
 
-from . import finders
-
+from .import finders
 
 logger = logging.getLogger(__name__)
-
 __all__ = [
     'MarkingScheme',
     'NotAMarkSchemeError',
@@ -25,14 +26,13 @@ __all__ = [
     'get_markscheme',
     'set_markscheme',
 ]
-
-
 _MARKSCHEME = None
 
 
 def get_markscheme():
     if _MARKSCHEME is None:
         raise RuntimeError('Markscheme has not been created.')
+
     return _MARKSCHEME
 
 
@@ -40,6 +40,7 @@ def set_markscheme(markscheme):
     global _MARKSCHEME
     if _MARKSCHEME is not None:
         raise RuntimeError('Markscheme already created.')
+
     _MARKSCHEME = markscheme
 
 
@@ -83,12 +84,24 @@ def mark_scheme(**params):
     """
     conf = MarkschemeConfig(GLOBAL_CONF["markscheme"])
     conf.update(**params)
-
     marking_scheme = MarkingScheme(**conf)
     set_markscheme(marking_scheme)
     return conf
 
 
+def get_spec_path_or_module(name, modname='markingpy_marking_scheme'):
+    path = Path(name)
+    if path.is_file():
+        return importlib.util.spec_from_file_location(modname, str(path))
+
+    spec = importlib.util.find_spec(name)
+    spec.name = modname
+    return spec
+
+
+
+
+# noinspection PyNoneFunctionAssignment
 @log_calls
 def import_markscheme(path):
     """
@@ -97,16 +110,14 @@ def import_markscheme(path):
     :param path: Path to import
     :return: markscheme
     """
-    if not path.name.endswith(".py"):
-        raise NotAMarkSchemeError
+    spec = get_spec_path_or_module(path)
+    if spec is None:
+        raise MarkschemeError(f'Could not locate marking scheme: {path}')
 
-    with open(path, "rt") as f:
-        source = f.read()
-    code = compile(source, path, "exec")
-    exec(code)
-
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    sys.modules[mod.__name__] = mod
     marking_scheme = get_markscheme()
-    marking_scheme.validate()
     return marking_scheme
 
 
@@ -149,6 +160,7 @@ class MarkingScheme:
 
     def __init__(
         self,
+        unique_id=None,
         marks=None,
         style_formula=None,
         style_marks=10,
@@ -158,25 +170,17 @@ class MarkingScheme:
         marks_db=None,
         **kwargs,
     ):
-
         # Unique identifier - hash of path with user
-        content = f"{getpass.getuser()}".encode()
-        self.unique_id = hashlib.md5(content).hexdigest()
-        logger.info("The unique identifier for this " 
-                    f"markscheme is {self.unique_id}")
-
+        self.unique_id = unique_id
         # Set up variables
         self.marks = marks
         self.style_marks = style_marks
         self.score_style = score_style
-
         # Set the exercises
         self.exercises = Exercise.get_all_exercises()
         Exercise.set_marking_scheme(self)
-
         self.linter = linter
         self.style_calc = build_style_calc(style_formula)
-
         # Set up the finder for loading submissions.
         if finder is None and submission_path is None:
             self.finder = finders.DirectoryFinder(Path(".", "submissions"))
@@ -228,13 +232,19 @@ class MarkingScheme:
             logger.debug(f'Marking validation: Passed')
 
     def add_exercise(self, exercise):
-        if not exercise in self.exercises:
+        if exercise not in self.exercises:
             self.exercises.append(exercise)
 
     def get_submissions(self):
         yield from self.finder.get_submissions()
 
+    def set_unique_id(self, module_name='markingpy_marking_scheme'):
+        if not self.unique_id:
+            mod = importlib.import_module(module_name)
+            self.unique_id = hashlib.md5(inspect.getsource(mod)).hexdigest()
+
     def get_db(self):
+        self.set_unique_id()
         return get_db(self.marks_db, self.unique_id)
 
     def format_return(self, score, total_score):
@@ -292,7 +302,9 @@ class MarkingScheme:
         score = 0
         total_score = 0
         report = []
-        for mark, total_marks, feedback in (ex.run(ns) for ex in self.exercises):
+        for mark, total_marks, feedback in (
+            ex.run(ns) for ex in self.exercises
+        ):
             score += mark
             total_score += total_marks
             report.append(feedback)
@@ -302,7 +314,8 @@ class MarkingScheme:
         score += style_score
         total_score += self.style_marks
         style_feedback = [
-            lint_report.read(), f"Style score: {style_score} / {self.style_marks}"
+            lint_report.read(),
+            f"Style score: {style_score} / {self.style_marks}",
         ]
         submission.add_feedback("style", "\n".join(style_feedback))
         submission.percentage = round(100 * score / total_score)

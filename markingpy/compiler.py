@@ -5,19 +5,9 @@ Helper module to compile files that might contain syntax errors.
 from codeop import PyCF_DONT_IMPLY_DEDENT
 from collections import namedtuple, deque
 
-
-
-__all__ = [
-    'Chunk',
-    'RemovedChunk',
-    'Compiler',
-    'Reason',
-]
-
+__all__ = ['Chunk', 'RemovedChunk', 'Compiler', 'Reason']
 # Chunk = namedtuple('Chunk', ('line_start', 'line_end', 'content'))
 Reason = namedtuple("Reason", ("removed_at", "exc"))
-
-
 
 
 class Chunk:
@@ -125,9 +115,13 @@ class Compiler:
         lines = chunk.content.splitlines()
         reason.lineno = chunk.line_start + lineno - 1
         self.removed += 1
-        removed_chunk = RemovedChunk(reason.lineno, reason.lineno, lines[lineno - 1])
+        removed_chunk = RemovedChunk(
+            reason.lineno, reason.lineno, lines[lineno - 1]
+        )
         removed_chunk.add_reason(Reason(self.removed, reason))
-        adjacent = [c for c in self.removed_chunks if c.is_adjacent(removed_chunk)]
+        adjacent = [
+            c for c in self.removed_chunks if c.is_adjacent(removed_chunk)
+        ]
         if not adjacent:
             self.removed_chunks.append(removed_chunk)
         else:
@@ -137,7 +131,9 @@ class Compiler:
             self.removed_chunks.append(removed_chunk)
         # print('Removing line', reason.lineno, lines[lineno-1])
         return (
-            Chunk(chunk.line_start, lineno - 2, "\n".join(lines[: lineno - 1])),
+            Chunk(
+                chunk.line_start, lineno - 2, "\n".join(lines[: lineno - 1])
+            ),
             Chunk(reason.lineno, chunk.line_end, "\n".join(lines[lineno:])),
         )
 
@@ -169,7 +165,9 @@ class Compiler:
         if after.content:
             self.to_process.append(after)
 
-    def compile_source(self, source, filename, mode, flags, dont_inherit, optimize):
+    def compile_source(
+        self, source, filename, mode, flags, dont_inherit, optimize
+    ):
         """
         Compile the source ignoring any compilation errors.
 

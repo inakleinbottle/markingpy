@@ -14,8 +14,6 @@ from .import magic
 
 logger = logging.getLogger(__name__)
 TestFeedback = namedtuple("TestFeedback", ("test", "mark", "feedback"))
-
-
 __all__ = [
     'BaseTest',
     'Test',
@@ -26,6 +24,7 @@ __all__ = [
     'MethodTest',
     'MethodTimingTest',
 ]
+
 
 # noinspection PyUnresolvedReferences
 class BaseTest(magic.MagicBase):
@@ -103,7 +102,9 @@ class BaseTest(magic.MagicBase):
         return self.marks if success else 0
 
     def format_error(self, err):
-        return "\n.".join(self.indent + line for line in str(err[1]).splitlines())
+        return "\n.".join(
+            self.indent + line for line in str(err[1]).splitlines()
+        )
 
     def format_warnings(self, warnings):
         return "\n".join(
@@ -145,6 +146,20 @@ class ExecutionFailedError(Exception):
 
 # noinspection PyUnresolvedReferences
 class CallTest(BaseTest):
+    """
+    Test output of submission function against model solution function.
+
+    Runs the submission function with the provided *calL_args* and
+    *call_kwargs* and compares the output against the the model solution
+    output.
+
+    Keyword arguments are forwarded to the underlying :class:`BaseTest`
+    instance.
+
+    :param call_args:
+    :param call_kwargs:
+
+    """
     call_args: args
     call_kwargs: kwargs
 
@@ -152,14 +167,16 @@ class CallTest(BaseTest):
         self.call_args = call_args
         self.call_kwargs = call_kwargs
         super().__init__(*args, **kwargs)
-        self.expected = self.exercise.func(*self.call_args, **self.call_kwargs)
+        self.expected = self.exercise.func(
+            * self.call_args, ** self.call_kwargs
+        )
 
     @log_calls
     def create_test(self, other):
         return ExecutionContext()
 
     def run(self, other):
-        output = other(*self.call_args, **self.call_kwargs)
+        output = other(* self.call_args, ** self.call_kwargs)
         return output == self.expected
 
 
@@ -169,7 +186,25 @@ TimingCase = namedtuple("TimingCase", ("call_args", "call_kwargs", "target"))
 
 class TimingTest(BaseTest):
     """
+    Test relative efficiency of test function using timing cases.
 
+    Run a sequence of timed calls to the submission function and compare the
+    running time to the model solution function or manually entered target
+    time. The test is passed if every execution time does not exceed the
+    corresponding target time plus some tolerance.
+
+    Keyword arguments are forwarded to the underlying :class:`BaseTest`
+    instance.
+
+    :param cases: Calls to test timing of submission function. Each should
+        be an instance of the TimingCase named tuple, containing the *args*,
+        *kwargs*, and *target* time.
+    :param tolerance:
+        Percentage tolerance for which a submission run time can exceed the
+        target time. This is applied to the target time in at test time using
+        the formula::
+
+            real_target = (1.0 + tolerance) * target
     """
 
     def __init__(self, cases, tolerance, **kwargs):
@@ -214,6 +249,30 @@ class TimingTest(BaseTest):
 
 
 class Test(BaseTest):
+    """
+    Custom test class based on a user defined function written in the
+    marking scheme file.
+
+    This class provides a wrapper around a user defined testing function to
+    set up the execution context and format the results passed back to the
+    grader. This class should be instantiated by applying the
+    :func:`~markingpy.Exercise.test` decorator.
+
+    The testing function can contain arbitrary Python code and use the
+    parent exercise name to refer to the submission function. Feedback can
+    be provided to the submission using the standard ``print`` function. The
+    testing function should return ``True`` on a successful test and
+    ``False`` on a failed test.
+
+    Uncaught exceptions that are raised within the testing function will be
+    propagated to the execution context, which will terminate the test. This
+    will usually result in a test failure.
+
+    Keyword arguments are forwarded to the underlying :class:`BaseTest`
+    instance.
+
+    :param test_func: Testing function.
+    """
 
     def __init__(self, test_func: Callable[..., bool], *args, **kwargs):
         self.test_func = test_func
@@ -266,12 +325,16 @@ class MethodTest(BaseTest):
         return output == self.expected
 
 
+
+
 # noinspection PyUnresolvedReferences
 class MethodTimingTest(BaseTest):
     inst_args: args
     inst_kwargs: kwargs
 
-    def __init__(self, method, cases, tolerance, inst_args, inst_kwargs, **kwargs):
+    def __init__(
+        self, method, cases, tolerance, inst_args, inst_kwargs, **kwargs
+    ):
         if isinstance(cases, dict):
             # cases from dict - preset targets
             cases = [

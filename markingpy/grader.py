@@ -8,10 +8,8 @@ from pathlib import Path
 from .submission import Submission
 
 logger = logging.getLogger(__name__)
+__all__ = ['Grader']
 
-__all__ = [
-    'Grader',
-]
 
 class Grader:
     """
@@ -33,7 +31,9 @@ class Grader:
         """
         self.markscheme.run(submission)
         self.db.insert(
-            submission.reference, submission.percentage, submission.generate_report()
+            submission.reference,
+            submission.percentage,
+            submission.generate_report(),
         )
 
     def grade_submissions(self, **opts):

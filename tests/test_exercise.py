@@ -1,16 +1,30 @@
 # Test exercises
+from collections import namedtuple
 import pytest
 from unittest import mock
+import random
+
+from decimal import Decimal
+from fractions import Fraction
+from typing import Iterable
+from math import sqrt
 
 import markingpy
-from markingpy.exercises import (exercise, Exercise, ExerciseFeedback)
+from markingpy.exercises import ( exercise, Exercise, ExerciseFeedback)
 import markingpy.cases
+
+Call = namedtuple('Call', ['args', 'kwargs'])
+
+
+def call(*args, **kwargs):
+    return Call(args, kwargs)
 
 
 @pytest.fixture
 def no_add_exercises():
     markingpy.NO_ADD_EXERCISES = True
     return None
+
 
 @pytest.fixture
 def ex_no_args(no_add_exercises):
@@ -128,7 +142,7 @@ def test_running_of_test_components_success(ex_with_component):
     out = ex_with_component.run(ns)
     assert isinstance(out, ExerciseFeedback)
     submission_good_func.assert_called()
-    score, tot, fb = out
+    score, tot, fb, tr = out
     assert score == tot
     assert isinstance(fb, str)
 
@@ -140,6 +154,81 @@ def test_running_of_test_components_fail(ex_with_component):
     out = ex_with_component.run(ns)
     assert isinstance(out, ExerciseFeedback)
     submission_bad_func.assert_not_called()
-    score, tot, fb = out
+    score, tot, fb, tr = out
     assert score == 0
     assert isinstance(fb, str)
+
+
+def randbetween(a, b):
+    return a + (b - a) * random.random()
+
+
+@pytest.fixture
+def calltest_cases():
+    return [
+        * (call(random.randint(-5, 5)) for _ in range(2)),
+        * (call(randbetween(-5.0, 5.0)) for _ in range(2)),
+        * (
+            call(float('inf')),
+            call(- float('inf')),
+            call(float('nan')),
+            call(- float('nan')),
+        ),
+        * (call(Decimal(randbetween(-5, 5))) for _ in range(2)),
+        * (call(Fraction(randbetween(-5, 5))) for _ in range(2)),
+        * (
+            call(complex(randbetween(-5, 5), randbetween(-10, 10)))
+            for _ in range(2)
+        ),
+        * (
+            call([randbetween(-5, 5) for _ in range(n)])
+            for n in [1, 5, 10, 90]
+        ),
+        * (
+            call(tuple(randbetween(-5, 5) for _ in range(n)))
+            for n in [1, 5, 10, 90]
+        ),
+    ]
+
+
+@pytest.fixture
+def multiple_test_abs_ex(calltest_cases):
+
+    @exercise
+    def abs(x):
+        if isinstance(x, (float, int, Decimal, Fraction)):
+            return -x if x < 0 else x
+
+        elif isinstance(x, complex):
+            return sqrt(x.real ** 2 + x.imag ** 2)
+
+        elif isinstance(x, str):
+            raise TypeError(f'Cannot take absolute value of type {type(x)}')
+
+        elif isinstance(x, Iterable):
+            cls = type(x)
+            return cls(abs(x_) for x_ in x)
+
+        else:
+            raise TypeError(f'Cannot take absolute value of type {type(x)}')
+
+    for tc in calltest_cases:
+        abs.add_test_call(*tc, marks=1, name=str(tc))
+    abs.lock()  # lock rather than validate
+    return abs
+
+
+def test_many_call_tests_ex(calltest_cases, multiple_test_abs_ex):
+    from math import fabs
+
+    def bs(x):
+        if not isinstance(x, Iterable):
+            return fabs(x)
+
+        return type(x)(fabs(x_) for x_ in x)
+
+    test_func = mock.MagicMock(side_effect=bs)
+    fb = multiple_test_abs_ex.run({'abs': test_func})
+    test_func.assert_called()
+    assert test_func.call_args_list == calltest_cases
+    print(fb[2])

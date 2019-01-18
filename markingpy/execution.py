@@ -2,7 +2,9 @@
 import sys
 import logging
 from io import StringIO
-from contextlib import ( redirect_stdout, redirect_stderr, contextmanager, ExitStack)
+from contextlib import (
+    redirect_stdout, redirect_stderr, contextmanager, ExitStack
+)
 from warnings import catch_warnings
 
 logger = logging.getLogger(__name__)

@@ -17,6 +17,7 @@ Call = namedtuple('Call', ['args', 'kwargs'])
 def call(*args, **kwargs):
     return Call(args, kwargs)
 
+
 @pytest.fixture
 def call_test_m():
 
@@ -140,7 +141,9 @@ def test_timing_test_setup_common_attributes(timing_test_m):
 def test_timing_test_specific_attributes(timing_test_m):
     assert isinstance(timing_test_m.cases, list)
     assert len(timing_test_m.cases) == 3
-    assert all(isinstance(case, cases.TimingCase) for case in timing_test_m.cases)
+    assert all(
+        isinstance(case, cases.TimingCase) for case in timing_test_m.cases
+    )
     assert timing_test_m.tolerance == 0.2
 
 
@@ -245,32 +248,23 @@ def call_test_func():
     def test_func(a):
         if isinstance(a, int):
             return str(a)
+
         elif isinstance(a, float):
             return round(a)
+
         elif isinstance(a, str):
             return a
+
         return repr(a)
 
-    return cases.CallTest(*call(1), exercise=test_func,
-                          marks=1)
+    return cases.CallTest(* call(1), exercise=test_func, marks=1)
 
 
 def test_call_test_running_funcs(call_test_func):
-
     call_sig = call(1)
-
-    test_cases = [
-            ('1', 1),
-            (1, 0),
-            (1.0, 0),
-            ('2', 0),
-            (repr(cases), 0),
-            ]
-
+    test_cases = [('1', 1), (1, 0), (1.0, 0), ('2', 0), (repr(cases), 0)]
     for ret, res in test_cases:
         test_func = mock.MagicMock(return_value=ret)
         result = call_test_func(test_func)
-
-        test_func.assert_called_with(*call_sig.args, **call_sig.kwargs)
+        test_func.assert_called_with(* call_sig.args, ** call_sig.kwargs)
         assert result.mark == res
-

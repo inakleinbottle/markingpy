@@ -10,33 +10,6 @@ from markingpy import markscheme
 from markingpy import finders
 
 
-class ImportMarkschemeTests(unittest.TestCase):
-
-    def setUp(self):
-        source = """\
-        from markingpy import mark_scheme, exercise
-        from markingpy.finders import NullFinder
-        
-        ms = mark_scheme(finder=NullFinder())
-        
-        @exercise
-        def exercise_1():
-            pass
-        """
-        patcher = mock.patch(
-            "markingpy.markscheme.open", mock.mock_open(read_data=dedent(source))
-        )
-        self.mock_open = patcher.start()
-        self.addCleanup(patcher.stop)
-
-    @mock.patch("markingpy.markscheme.build_style_calc")
-    def test_import_marksheme(self, mock_style_calc):
-        """Test that mark scheme object correctly created and imported."""
-        ms = markscheme.import_markscheme(Path("testpath.py"))
-        self.mock_open.assert_called_with(Path("testpath.py"), "rt")
-        mock_style_calc.assert_called()
-
-
 @pytest.fixture
 def ms():
     source = """\
@@ -97,7 +70,11 @@ def test_markscheme_run_full_marks(ms):
     mock_linter_report = mock.MagicMock()
     mock_linter_report.read = mock.MagicMock(return_value=('Linter'))
     mock_linter_report.stats = {
-        'statement': 1, 'error': 0, 'warning': 0, 'refactor': 0, 'convention': 0
+        'statement': 1,
+        'error': 0,
+        'warning': 0,
+        'refactor': 0,
+        'convention': 0,
     }
     mock_linter = mock.MagicMock(
         autospec=markingpy.linters.linter, return_value=mock_linter_report
@@ -130,7 +107,11 @@ def test_markscheme_run_no_marks(ms):
     mock_linter_report = mock.MagicMock()
     mock_linter_report.read = mock.MagicMock(return_value=('Linter'))
     mock_linter_report.stats = {
-        'statement': 4, 'error': 1, 'warning': 1, 'refactor': 1, 'convention': 1
+        'statement': 4,
+        'error': 1,
+        'warning': 1,
+        'refactor': 1,
+        'convention': 1,
     }
     mock_linter = mock.MagicMock(
         autospec=markingpy.linters.linter, return_value=mock_linter_report

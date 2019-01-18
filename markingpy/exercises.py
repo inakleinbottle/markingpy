@@ -10,12 +10,10 @@ from inspect import isfunction, isclass
 
 from .cases import Test, TimingTest, CallTest, Call
 from .utils import log_calls
-from . import cases
+from .import cases
 
 logger = logging.getLogger(__name__)
 INDENT = " " * 4
-
-
 __all__ = [
     'Exercise',
     'ExerciseFunctionProxy',
@@ -26,24 +24,20 @@ __all__ = [
     'FunctionExercise',
     'exercise',
 ]
-
-
 NO_ADD_EXERCISES = False
-
 _EXERCISES = weakref.WeakKeyDictionary()
 
 
 class ExerciseBase:
-
     _marking_scheme = None
 
     def __init__(self):
         ex_no = min(
-            i for i in range(1, len(_EXERCISES) + 2)
+            i
+            for i in range(1, len(_EXERCISES) + 2)
             if i not in _EXERCISES.values()
         )
         _EXERCISES[self] = ex_no
-
         if self._marking_scheme is not None:
             self._marking_scheme.add_exercise(self)
 
@@ -64,7 +58,9 @@ class ExerciseError(Exception):
     pass
 
 
-ExerciseFeedback = namedtuple("Feedback", ("marks", "total_marks", "feedback"))
+ExerciseFeedback = namedtuple(
+    "Feedback", ("marks", "total_marks", "feedback", "per_test")
+)
 
 
 def record_call(*args, **kwargs):
@@ -93,8 +89,9 @@ class Exercise(ExerciseBase):
     :param descr: Short description of the test to be printed in the feedback.
     """
 
-    def __init__(self, function_or_class, name=None, descr=None, marks=None,
-                 **args):
+    def __init__(
+        self, function_or_class, name=None, descr=None, marks=None, **args
+    ):
         super().__init__()
         self.number = self.get_number()
         wraps(function_or_class)(self)
@@ -250,12 +247,18 @@ class Exercise(ExerciseBase):
             feedback.extend(r.feedback for r in results)
             score = sum(r.mark for r in results)
             logger.info(f"Score for ex: {score} / {self.total_marks}")
-            feedback.append(f"Score for {self.name}: {score} / {self.total_marks}")
-            return ExerciseFeedback(score, self.total_marks, "\n".join(feedback))
+            feedback.append(
+                f"Score for {self.name}: {score} / {self.total_marks}"
+            )
+            return ExerciseFeedback(
+                score, self.total_marks, "\n".join(feedback), results
+            )
 
         else:
             msg = "Function {} was not found in submission."
-            return ExerciseFeedback(0, self.total_marks, msg.format(self.func.__name__))
+            return ExerciseFeedback(
+                0, self.total_marks, msg.format(self.func.__name__), []
+            )
 
 
 class ExerciseFunctionProxy:
@@ -276,7 +279,9 @@ class ExerciseFunctionProxy:
         """
         if isinstance(call_params, Call):
             call_params, call_kwparams = call_params
-        return self.add_test(call_params, call_kwparams, cls=CallTest, **kwargs)
+        return self.add_test(
+            call_params, call_kwparams, cls=CallTest, **kwargs
+        )
 
     @log_calls("info")
     def timing_test(self, timing_cases, tolerance=0.2, **kwargs):
@@ -349,7 +354,9 @@ class ExerciseInstance:
 
     def __getattr__(self, item):
         if not hasattr(self.__cls, item):
-            raise AttributeError(f"{self.__cls} does not have attribute {item}")
+            raise AttributeError(
+                f"{self.__cls} does not have attribute {item}"
+            )
 
         cls_attr = getattr(self.__cls, item)
         if isfunction(cls_attr):

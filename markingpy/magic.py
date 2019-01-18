@@ -78,7 +78,9 @@ def method_marks(marks):
     return deco
 
 
-_MAGIC = {"args": ARGS, "kwargs": KWARGS, "marks": method_marks, "common": common}
+_MAGIC = {
+    "args": ARGS, "kwargs": KWARGS, "marks": method_marks, "common": common
+}
 
 
 class MagicMeta(type):

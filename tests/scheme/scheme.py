@@ -22,7 +22,9 @@ add.add_test_call((-1, 2), marks=1)
 add.add_test_call((2, 4), marks=1)
 cases = [(1, 1), (100, 100), (1000, 1000)]
 add.timing_test(
-    (TimingCase(cs, {}, time_run(add, cs, {})) for cs in cases), tolerance=0.2, marks=2
+    (TimingCase(cs, {}, time_run(add, cs, {})) for cs in cases),
+    tolerance=0.2,
+    marks=2,
 )
 
 
@@ -41,7 +43,8 @@ def test_type_enforcement():
             returned = add(a, b)
     except Exception as err:
         feedback = (
-            "Your function handled non-integer inputs" " by raising an exception:\n {}"
+            "Your function handled non-integer inputs"
+            " by raising an exception:\n {}"
         ).format(
             err
         )

@@ -15,7 +15,11 @@ class TestStyleCalculator(TestCase):
     def test_style_calc_builder(self):
         """Test the style calculator factory."""
         test_dict = {
-            "error": 1, "warning": 2, "refactor": 0, "convention": 4, "statement": 15
+            "error": 1,
+            "warning": 2,
+            "refactor": 0,
+            "convention": 4,
+            "statement": 15,
         }
         calc = build_style_calc(
             "(error + warning + refactor + convention)" "/statement"
@@ -44,7 +48,8 @@ class TestSubmissionClass(TestCase):
         compile_mock.assert_called_with(dedent(source))
         self.assertIn("compilation", self.submission.feedback)
         self.assertEqual(
-            self.submission.feedback["compilation"], "No compilation errors found."
+            self.submission.feedback["compilation"],
+            "No compilation errors found.",
         )
 
     def test_compilation_tab_error(self):

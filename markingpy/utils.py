@@ -15,16 +15,11 @@ try:
     import signal
 except ImportError:
     signal = None
-
 from .config import LOGGING_LEVELS
 
 logger = logging.getLogger(__name__)
-
 __all__ = [
-    'log_calls',
-    'build_style_calc',
-    'DEFAULT_STYLE_FORMULA',
-    'time_run',
+    'log_calls', 'build_style_calc', 'DEFAULT_STYLE_FORMULA', 'time_run'
 ]
 
 
@@ -49,7 +44,8 @@ def log_calls(level=None):
             #)
             #msg += ")"
             msg = (
-                f'Call {func.__name__}' f'({", ".join(str(arg)[:5] for arg in args)})'
+                f'Call {func.__name__}'
+                f'({", ".join(str(arg)[:5] for arg in args)})'
             )
             logger.log(level, msg)
             return func(*args, **kwargs)
@@ -87,7 +83,11 @@ def build_style_calc(formula):
 
 
 DEFAULT_STYLE_FORMULA = (
-    "1. - float(5*error" " + warning" " + refactor" " + convention)" " / statement"
+    "1. - float(5*error"
+    " + warning"
+    " + refactor"
+    " + convention)"
+    " / statement"
 )
 default_style_calc = build_style_calc(DEFAULT_STYLE_FORMULA)
 
@@ -114,7 +114,6 @@ def time_run(func, args, kwargs):
 
 
 if resource is not None and signal is not None:
-
     __all__.append('cpu_linit')
 
     @contextmanager

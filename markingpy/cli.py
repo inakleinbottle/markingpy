@@ -105,7 +105,7 @@ def main():
     Main command line runner.
     """
     try:
-        path = Path(sys.argv[1])
+        path = sys.argv[1]
     except IndexError:
         return run()
 

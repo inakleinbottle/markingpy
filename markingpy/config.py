@@ -5,13 +5,7 @@ from configparser import ConfigParser
 from pkgutil import get_data
 from pathlib import Path
 
-__all__ =[
-    'CONFIG_PATHS',
-    'LOGGING_LEVELS',
-    'GLOBAL_CONF',
-    'logger',
-]
-
+__all__ = ['CONFIG_PATHS', 'LOGGING_LEVELS', 'GLOBAL_CONF', 'logger']
 CONFIG_PATHS = [Path.home() / ".markingpy"]
 LOGGING_LEVELS = {
     "debug": logging.DEBUG,
@@ -35,6 +29,5 @@ def load_config():
 
 
 GLOBAL_CONF = load_config()
-
 logging.basicConfig(level=LOGGING_LEVELS[GLOBAL_CONF["logging"]["level"]])
 logger = logging.getLogger(__name__)
