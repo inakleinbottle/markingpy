@@ -5,8 +5,19 @@ Helper module to compile files that might contain syntax errors.
 from codeop import PyCF_DONT_IMPLY_DEDENT
 from collections import namedtuple, deque
 
+
+
+__all__ = [
+    'Chunk',
+    'RemovedChunk',
+    'Compiler',
+    'Reason',
+]
+
 # Chunk = namedtuple('Chunk', ('line_start', 'line_end', 'content'))
 Reason = namedtuple("Reason", ("removed_at", "exc"))
+
+
 
 
 class Chunk:

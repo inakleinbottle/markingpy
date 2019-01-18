@@ -10,38 +10,54 @@ from inspect import isfunction, isclass
 
 from .cases import Test, TimingTest, CallTest, Call
 from .utils import log_calls
-from .import cases
+from . import cases
 
 logger = logging.getLogger(__name__)
 INDENT = " " * 4
-_exercises = weakref.WeakKeyDictionary()
+
+
+__all__ = [
+    'Exercise',
+    'ExerciseFunctionProxy',
+    'ExerciseInstance',
+    'ExerciseError',
+    'ExerciseFeedback',
+    'ClassExercise',
+    'FunctionExercise',
+    'exercise',
+]
+
+
+NO_ADD_EXERCISES = False
+
+_EXERCISES = weakref.WeakKeyDictionary()
 
 
 class ExerciseBase:
 
-    def __init__(self):
-        ex_no = min(
-            i for i in range(1, len(_exercises) + 2) if i not in _exercises.values()
-        )
-        _exercises[self] = ex_no
-
-    def get_number(self):
-        return _exercises[self]
-
-
-_exercises = weakref.WeakKeyDictionary()
-
-
-class ExerciseBase:
+    _marking_scheme = None
 
     def __init__(self):
         ex_no = min(
-            i for i in range(1, len(_exercises) + 2) if i not in _exercises.values()
+            i for i in range(1, len(_EXERCISES) + 2)
+            if i not in _EXERCISES.values()
         )
-        _exercises[self] = ex_no
+        _EXERCISES[self] = ex_no
+
+        if self._marking_scheme is not None:
+            self._marking_scheme.add_exercise(self)
+
+    @staticmethod
+    def get_all_exercises():
+        return [r for r in _EXERCISES]
+
+    @classmethod
+    def set_marking_scheme(cls, marking_scheme):
+        if not NO_ADD_EXERCISES:
+            cls._marking_scheme = marking_scheme
 
     def get_number(self):
-        return _exercises[self]
+        return _EXERCISES[self]
 
 
 class ExerciseError(Exception):
@@ -77,11 +93,12 @@ class Exercise(ExerciseBase):
     :param descr: Short description of the test to be printed in the feedback.
     """
 
-    def __init__(self, function_or_class, name=None, descr=None, marks=None, **args):
+    def __init__(self, function_or_class, name=None, descr=None, marks=None,
+                 **args):
         super().__init__()
+        self.number = self.get_number()
         wraps(function_or_class)(self)
         self.tests = []
-        self.number = self.get_number()
         self.num_tests = 0
         self.func = function_or_class
         self.exc_func = record_call

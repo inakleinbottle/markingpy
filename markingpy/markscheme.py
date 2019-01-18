@@ -6,15 +6,41 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from .config import GLOBAL_CONF
-from .exercise import Exercise
-from .linter import linter
+from .exercises import Exercise
+from .linters import linter
 from .utils import build_style_calc, log_calls
 from .storage import get_db
 
+from . import finders
 
-from .import finders
 
 logger = logging.getLogger(__name__)
+
+__all__ = [
+    'MarkingScheme',
+    'NotAMarkSchemeError',
+    'MarkschemeError',
+    'MarkschemeConfig',
+    'mark_scheme',
+    'get_markscheme',
+    'set_markscheme',
+]
+
+
+_MARKSCHEME = None
+
+
+def get_markscheme():
+    if _MARKSCHEME is None:
+        raise RuntimeError('Markscheme has not been created.')
+    return _MARKSCHEME
+
+
+def set_markscheme(markscheme):
+    global _MARKSCHEME
+    if _MARKSCHEME is not None:
+        raise RuntimeError('Markscheme already created.')
+    _MARKSCHEME = markscheme
 
 
 class NotAMarkSchemeError(Exception):
@@ -55,9 +81,12 @@ def mark_scheme(**params):
         equivalent to ``'{mark}/{total} ({percentage})'``.
     :param marks_db: Path to database to store submission results and feedback.
     """
-    conf = dict(GLOBAL_CONF["markscheme"])
+    conf = MarkschemeConfig(GLOBAL_CONF["markscheme"])
     conf.update(**params)
-    return MarkschemeConfig(**conf)
+
+    marking_scheme = MarkingScheme(**conf)
+    set_markscheme(marking_scheme)
+    return conf
 
 
 @log_calls
@@ -74,17 +103,9 @@ def import_markscheme(path):
     with open(path, "rt") as f:
         source = f.read()
     code = compile(source, path, "exec")
-    ns = {}
-    exec (code, ns)
-    exercises = [ex for ex in ns.values() if isinstance(ex, Exercise)]
-    try:
-        config = [cf for cf in ns.values() if isinstance(cf, MarkschemeConfig)][0]
-    except IndexError:
-        if not exercises:
-            raise NotAMarkSchemeError
+    exec(code)
 
-        config = MarkschemeConfig()
-    marking_scheme = MarkingScheme(path, exercises, **config)
+    marking_scheme = get_markscheme()
     marking_scheme.validate()
     return marking_scheme
 
@@ -128,8 +149,6 @@ class MarkingScheme:
 
     def __init__(
         self,
-        path,
-        exercises,
         marks=None,
         style_formula=None,
         style_marks=10,
@@ -139,16 +158,25 @@ class MarkingScheme:
         marks_db=None,
         **kwargs,
     ):
-        self.path = path
-        content = f"{str(path)},{getpass.getuser()}".encode()
+
+        # Unique identifier - hash of path with user
+        content = f"{getpass.getuser()}".encode()
         self.unique_id = hashlib.md5(content).hexdigest()
-        logger.info("The unique identifier for this " f"markscheme is {self.unique_id}")
+        logger.info("The unique identifier for this " 
+                    f"markscheme is {self.unique_id}")
+
+        # Set up variables
         self.marks = marks
-        self.exercises = exercises
         self.style_marks = style_marks
         self.score_style = score_style
+
+        # Set the exercises
+        self.exercises = Exercise.get_all_exercises()
+        Exercise.set_marking_scheme(self)
+
         self.linter = linter
         self.style_calc = build_style_calc(style_formula)
+
         # Set up the finder for loading submissions.
         if finder is None and submission_path is None:
             self.finder = finders.DirectoryFinder(Path(".", "submissions"))
@@ -162,6 +190,7 @@ class MarkingScheme:
                 "of markingpy.finders.BaseFinder"
             )
 
+        # Database setup
         self.marks_db = Path(marks_db).expanduser()
         # Unused parameters
         for k in kwargs:
@@ -197,6 +226,10 @@ class MarkingScheme:
                 )
 
             logger.debug(f'Marking validation: Passed')
+
+    def add_exercise(self, exercise):
+        if not exercise in self.exercises:
+            self.exercises.append(exercise)
 
     def get_submissions(self):
         yield from self.finder.get_submissions()

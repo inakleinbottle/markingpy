@@ -1,10 +1,19 @@
+"""
+Submission finder tools.
+"""
+
 from abc import ABC, abstractmethod
 import sqlite3
 from pathlib import Path
 
 from .import submission
 
-__all__ = ["DirectoryFinder", "SQLiteFinder"]
+__all__ = [
+    "BaseFinder",
+    "DirectoryFinder",
+    "SQLiteFinder",
+    "NullFinder",
+]
 
 
 class BaseFinder(ABC):
