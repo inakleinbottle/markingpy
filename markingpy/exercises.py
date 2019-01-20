@@ -238,7 +238,7 @@ class Exercise(ExerciseBase):
         """
         fn_name = self.func.__name__
         submission_fun = namespace.get(fn_name, None)
-        logger.info(submission_fun)
+
         if submission_fun is not None:
             feedback = [self.name]
             if self.descr:
@@ -340,8 +340,6 @@ class ExerciseMethodProxy(ExerciseFunctionProxy):
             )
 
         raise TypeError
-
-
 
 
 # noinspection PyProtectedMember
@@ -489,3 +487,102 @@ def exercise(name=None, cls=None, **args):
 
     else:
         return decorator(name)
+
+
+SuccessCriterion = namedtuple('SuccessCriteria', ('name',
+                                                  'descr',
+                                                  'condition',
+                                                  'points'))
+
+
+class OutcomeBasedExercise(Exercise):
+    """
+    Exercise class testing known or algorithmic outcomes rather than testing
+    against a model solution.
+
+    Construct exercises based on principle success criteria, rather than
+    knowing a model solution and testing output against one another.
+
+    For example, finding solutions to randomly generated mazes. There is not a
+    model solution to this problem. The principle success criteria is
+    exiting the maze. Secondary success criteria could be the number of
+    dead-ends met during the solution. (The implementation of randomly
+    generated mazes is itself an interesting challenge.)
+
+    The syntax for this exercise is different from other exercises. The
+    exercise wraps an environment object that determines the parameters for
+    the test. In the example above, this would be the maze. The submission
+    can interact with the object using its methods. For instance,
+    these could be moving in each direction, or looking ahead. The submission
+    function must use only the functions provided by the environment object to
+    solve the problem.
+    """
+
+    def __init__(self, environment, submission_func_name, **kwargs):
+        super().__init__(self, None, **kwargs)
+        self.environment = environment
+        self.primary_criteria = []
+        self.secondary_criteria = []
+        self.submission_func_name = submission_func_name
+
+    @staticmethod
+    def _criterion_decorator(append_to, name, descr, points):
+        def deco(func):
+            criterion = cases.SuccessCriterion(func, name=name, descr=descr,
+                                               marks=points)
+            append_to.append(criterion)
+            return func
+        return deco
+
+    def primary_criterion(self, name=None, descr=None, points=None):
+        return self._criterion_decorator(self.primary_criteria, name, descr,
+                                         points)
+
+    def secondary_criterion(self, name=None, descr=None, points=None):
+        return self._criterion_decorator(self.secondary_criteria, name,
+                                         descr, points)
+
+    def format_feedback(self, primary_results, secondary_results):
+        """
+        Determine and format the results of a test run
+
+        :param primary_results:
+        :param secondary_results:
+        :return:
+        """
+
+    def run(self, namespace):
+        """
+        Run the test on the submission function.
+
+        The general procedure is:
+         1. create an instance of the environment class;
+         2. apply the submission function;
+         3. test criteria against mutated environment;
+         4. process criteria and return feedback.
+
+         :param namespace: Submission namespace to test
+         :return: :class:`ExerciseFeedback` object
+        """
+
+        # Make a new instance of the environment
+        env = self.environment()
+
+        # get the function to run
+        other = namespace.get(self.submission_func_name, None)
+
+        if other is None:
+            msg = "Function {} was not found in submission."
+            return ExerciseFeedback(
+                0, self.total_marks, msg.format(self.func.__name__), []
+            )
+
+        # Run it through the submission function
+        other(env)
+
+        # Process the criteria
+        primary_results = [crit(env)
+                           for crit in self.primary_criteria]
+        secondary_results = [crit(env)
+                             for crit in self.secondary_criteria]
+        return self.format_feedback(primary_results, secondary_results)

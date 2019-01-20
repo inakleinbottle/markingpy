@@ -374,3 +374,19 @@ class MethodTimingTest(BaseTest):
 
             success ^= runtime <= (1.0 + self.tolerance) * target
         return success
+
+
+class SuccessCriterion(BaseTest):
+
+    def __init__(self, criterion, **kwargs):
+        super().__init__(**kwargs)
+        self.criterion = criterion
+
+    def create_test(self, other):
+        return ExecutionContext()
+
+    def run(self, environment):
+        res = self.criterion(environment)
+
+        # Process the result here.
+        return res
