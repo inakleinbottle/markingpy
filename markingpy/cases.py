@@ -1,7 +1,5 @@
-import inspect
 import logging
 
-from abc import ABC, abstractmethod
 from collections import namedtuple, abc
 from contextlib import redirect_stdout
 from io import StringIO
@@ -10,7 +8,7 @@ from typing import Callable
 
 from .utils import log_calls, time_run
 from .execution import ExecutionContext
-from .import magic
+from . import magic
 
 logger = logging.getLogger(__name__)
 TestFeedback = namedtuple("TestFeedback", ("test", "mark", "feedback"))
@@ -93,7 +91,8 @@ class BaseTest(magic.MagicBase):
         """
         Examine result and determine whether a test was successful.
 
-        :param result:
+        :param ctx:
+        :param test_output:
         :return:
         """
         return ctx.ran_successfully and test_output
@@ -323,8 +322,6 @@ class MethodTest(BaseTest):
         func = getattr(instance, self.method)
         output = func(* self.call_args, ** self.call_kwargs)
         return output == self.expected
-
-
 
 
 # noinspection PyUnresolvedReferences

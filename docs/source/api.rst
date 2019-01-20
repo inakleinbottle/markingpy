@@ -39,6 +39,24 @@ Tests
     :members:
 
 
+Marking Schemes
+---------------
+
+.. module:: markingpy.markscheme
+
+.. autoclass:: MarkingScheme
+    :members:
+
+.. autofunction:: prepare_namespace
+
+.. autoclass:: Importer
+
+.. autoclass:: ModuleList
+
+.. autoclass:: ControlledFunction
+
+.. autoclass:: WrappedModule
+
 Finders
 -------
 

@@ -231,4 +231,4 @@ def test_many_call_tests_ex(calltest_cases, multiple_test_abs_ex):
     fb = multiple_test_abs_ex.run({'abs': test_func})
     test_func.assert_called()
     assert test_func.call_args_list == calltest_cases
-    print(fb[2])
+

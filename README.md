@@ -87,6 +87,14 @@ Clone the repository and run ``make install``. Markingpy uses ``pipenv`` to hand
 ## Additional Disclaimer
 This is my first Python package that I have "released" (i.e. put on PyPI), and I would be grateful for any feedback and constructive criticisms. Contributions are certainly welcome in all forms; see below.
 
+## Contributing
+
+1. Fork it (<https://github.com/inakleinbottle/markingpy/fork>)
+2. Create your feature branch (`git checkout -b feature/name`)
+3. Commit your changes (`git commit -am 'Add some feature')
+4. Push to the branch (`git push origin feature/name`)
+5. Create a new Pull Request.
+
 ## Release History
 
  * 0.2.0
@@ -106,12 +114,4 @@ This is my first Python package that I have "released" (i.e. put on PyPI), and I
 Sam Morley - sam@inakleinbottle.com - [https://inakelinbottle.com](https://inakleinbottle.com)
 
 Distributed under the GPLV3 license. See ``LICENSE`` for more information.
-
-## Contributing
-
-1. Fork it (<https://github.com/inakleinbottle/markingpy/fork>)
-2. Create your feature branch (`git checkout -b feature/name`)
-3. Commit your changes (`git commit -am 'Add some feature')
-4. Push to the branch (`git push origin feature/name`)
-5. Create a new Pull Request.
 
