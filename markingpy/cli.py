@@ -193,7 +193,6 @@ def handle_marking_scheme(path, args, root_parser):
             )
 
     def display_help(a):
-        print('help')
         parser.print_help()
         parser.exit()
     help_parser.set_defaults(func=display_help)
@@ -203,7 +202,6 @@ def handle_marking_scheme(path, args, root_parser):
 
 
 def run_ms(markscheme, args):
-    print('Running Grader')
     markscheme.update_config(vars(args))
     markscheme.validate()
     grader = Grader(markscheme)

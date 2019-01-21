@@ -64,7 +64,7 @@ def test_markscheme_run_full_marks(ms):
     """Test that markscheme.run makes correct calls to exercises and linter."""
     mock_exercise = mock.MagicMock(spec=markingpy.Exercise)
     mock_exercise.run = mock.MagicMock(
-        return_value=(1, 1, 'Exercise')  # marks  # total marks  # feedback
+        return_value=(1, 1, 'Exercise', [])  # marks  # total marks  # feedback
     )
     mock_submission = mock.MagicMock(autospec=markingpy.submission.Submission)
     mock_linter_report = mock.MagicMock()
@@ -92,7 +92,9 @@ def test_markscheme_run_full_marks(ms):
     mock_linter_report.read.assert_called()
     call_args_list = mock_submission.add_feedback.call_args_list
     assert call_args_list == [
-        (('tests', 'Exercise'),), (('style', 'Linter\nStyle score: 10 / 10'),)
+        (('execution', []),),
+        (('tests', 'Exercise'),),
+        (('style', 'Linter\nStyle score: 10 / 10'),)
     ]
     assert mock_submission.percentage == 100
 
@@ -101,7 +103,7 @@ def test_markscheme_run_no_marks(ms):
     """Test that markscheme.run makes correct calls to exercises and linter."""
     mock_exercise = mock.MagicMock(spec=markingpy.Exercise)
     mock_exercise.run = mock.MagicMock(
-        return_value=(0, 1, 'Exercise')  # marks  # total marks  # feedback
+        return_value=(0, 1, 'Exercise', [])  # marks  # total marks  # feedback
     )
     mock_submission = mock.MagicMock(autospec=markingpy.submission.Submission)
     mock_linter_report = mock.MagicMock()
@@ -129,6 +131,8 @@ def test_markscheme_run_no_marks(ms):
     mock_linter_report.read.assert_called()
     call_args_list = mock_submission.add_feedback.call_args_list
     assert call_args_list == [
-        (('tests', 'Exercise'),), (('style', 'Linter\nStyle score: 0 / 10'),)
+        (('execution', []),),
+        (('tests', 'Exercise'),),
+        (('style', 'Linter\nStyle score: 0 / 10'),)
     ]
     assert mock_submission.percentage == 0

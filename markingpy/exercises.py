@@ -238,7 +238,6 @@ class Exercise(ExerciseBase):
         """
         fn_name = self.func.__name__
         submission_fun = namespace.get(fn_name, None)
-        logger.info(submission_fun)
         if submission_fun is not None:
             feedback = [self.name]
             if self.descr:
@@ -246,7 +245,6 @@ class Exercise(ExerciseBase):
             results = [test(submission_fun) for test in self.tests]
             feedback.extend(r.feedback for r in results)
             score = sum(r.mark for r in results)
-            logger.info(f"Score for ex: {score} / {self.total_marks}")
             feedback.append(
                 f"Score for {self.name}: {score} / {self.total_marks}"
             )

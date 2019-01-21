@@ -1,13 +1,14 @@
 import builtins
 import hashlib
+import importlib
 import importlib.util
 import inspect
 import logging
 import sys
+import time
 import warnings
 
-from builtins import __import__
-from collections import ChainMap
+from builtins import __import__, exec as b_exec, eval as b_eval
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
@@ -162,7 +163,12 @@ class WrappedModule:
         return str(self.mod)
 
     def __getattr__(self, item):
-        return getattr(self.mod, item)
+        if not item in self.__dict__:
+            return getattr(self.mod, item)
+        raise AttributeError(f'{self.__name__} has no attribute {item}')
+
+    def __setattr__(self, name, val):
+        self.__dict__[name] = val
 
 
 class ControlledFunction:
@@ -209,20 +215,29 @@ class Importer:
     access to certain attributes in a module.
     """
 
-    def __init__(self, allowed=None, forbidden=None,
-                 import_=None, eval_=None, exec_=None):
+    def __init__(self, namespace, allowed=None, forbidden=None,
+                 import_=__import__, eval_=None, exec_=None):
+        self.namespace = namespace
         self.allowed = allowed if allowed else []
         self.forbidden = forbidden if forbidden else []
         self.eval_ = eval_
         self.exec_ = exec_
         self.loaded_modules = ModuleList()
-        self.import_ = import_ or __import__
+        self.import_ = import_
 
     def _is_forbidden(self, name):
         return name in self.forbidden
 
     def _is_not_allowed(self, name):
         return name not in self.allowed
+
+    @contextmanager
+    def restore(self):
+        self.namespace['__builtins__']['__import__'] = __import__
+        try:
+            yield
+        finally:
+            self.namespace['__builtins__']['__import__'] = self
 
     def __call__(self, name, *args):
         if self._is_forbidden(name):
@@ -231,36 +246,11 @@ class Importer:
             )
         if self._is_not_allowed(name):
             warnings.warn(
-                f'User import module {name}'
+                f'User imported module {name}'
             )
-        if name not in self.loaded_modules:
-            with self.eval_.restore(), self.exec_.restore():
-                self.loaded_modules[name] = self.import_(name, *args)
-        return self.loaded_modules[name]
 
-
-def prepare_namespace():
-    """
-    Prepare the namespace for a submission.
-
-    Create a new namespace to be used to exec submission code. The standard
-    builtins will be loaded with the ``__import__`` function replaced by a
-    controlled importer, and ``exec`` and ``eval`` disabled.
-
-    :return: namespace ``dict``, :class:`Importer`,
-        :class:`ControlledFunction` ``eval``,
-        :class:`ControlledFunction` ``exec``
-    """
-    ns = {'__builtins__': builtins.__dict__.copy()}
-    eval_ = eval
-    exec_ = exec
-    c_eval = ControlledFunction(eval_)
-    c_exec = ControlledFunction(exec_)
-    importer = Importer(eval_=c_eval, exec_=c_exec)
-    ns['__builtins__']['__import__'] = importer
-    ns['__builtins__']['eval'] = c_eval
-    ns['__builtins__']['exec'] = c_exec
-    return ns, importer, c_eval, c_exec
+        with self.eval_.restore(), self.exec_.restore(), self.restore():
+            return self.import_(name, *args)
 
 
 class MarkingScheme:
@@ -297,17 +287,20 @@ class MarkingScheme:
     """
 
     def __init__(
-        self,
-        unique_id=None,
-        marks=None,
-        style_formula=None,
-        style_marks=10,
-        score_style="basic",
-        submission_path=None,
-        finder=None,
-        marks_db=None,
-        **kwargs,
-    ):
+            self,
+            unique_id=None,
+            marks=None,
+            style_formula=None,
+            style_marks=10,
+            score_style="basic",
+            submission_path=None,
+            finder=None,
+            marks_db=None,
+            allowed_modules=None,
+            forbidden_modules=None,
+            preload_modules=None,
+            **kwargs,
+            ):
         # Unique identifier - hash of path with user
         self.unique_id = unique_id
 
@@ -315,6 +308,14 @@ class MarkingScheme:
         self.marks = marks
         self.style_marks = style_marks
         self.score_style = score_style
+        self.allowed_modules = allowed_modules or []
+        self.forbidden_modules = forbidden_modules or []
+        self.preload_modules = preload_modules or []
+
+        # set up timing
+        self.start_time = None
+        self.last_marked_time = None
+        self.timing_stats = []
 
         # Set the exercises
         self.exercises = Exercise.get_all_exercises()
@@ -455,19 +456,49 @@ class MarkingScheme:
             )
 
     @contextmanager
-    def sandbox(self):
+    def sandbox(self, ns, submission):
         """
         Create a sandbox to exec submission code in a context manager. This
         replaces ``sys.modules`` with a chain map so that imported modules will
         not have global effects. Upon exit, ``sys.modules`` is restored to
         its original state.
         """
-
-        sys.modules = ChainMap({}, sys.modules)
-        try:
+        with warnings.catch_warnings(record=True) as warns:
             yield
-        finally:
-            sys.modules = sys.modules.maps[1]
+            for w in warns:
+                print(w.message)
+            submission.add_feedback('execution', warns)
+
+    def prepare_namespace(self):
+        """
+        Prepare the namespace for a submission.
+
+        Create a new namespace to be used to exec submission code. The standard
+        builtins will be loaded with the ``__import__`` function replaced by a
+        controlled importer, and ``exec`` and ``eval`` disabled.
+
+        :return: namespace ``dict``
+        """
+        ns = {'__builtins__': builtins.__dict__.copy()}
+
+        c_eval = ControlledFunction(b_eval)
+        c_exec = ControlledFunction(b_exec)
+
+        importer = Importer(ns,
+                            allowed=self.allowed_modules,
+                            forbidden=self.forbidden_modules,
+                            eval_=c_eval,
+                            exec_=c_exec)
+
+        ns['__builtins__']['__import__'] = importer
+        ns['__builtins__']['eval'] = c_eval
+        ns['__builtins__']['exec'] = c_exec
+
+        ns['sys'] = WrappedModule(sys)
+        for mod in self.preload_modules:
+            ns[mod] = WrappedModule(importlib.import_module(mod))
+
+        return ns
 
     @log_calls
     def run(self, submission):
@@ -476,10 +507,13 @@ class MarkingScheme:
 
         :param submission: Submission to grade
         """
-        code = submission.compile()
-        ns, importer, c_eval, c_exec = prepare_namespace()
+        if self.start_time is None:
+            self.start_time = self.last_marked_time = time.time()
 
-        with self.sandbox():
+        code = submission.compile()
+        ns = self.prepare_namespace()
+
+        with self.sandbox(ns, submission):
             exec(code, ns)
 
         score = 0
@@ -493,6 +527,7 @@ class MarkingScheme:
             total_score += total_marks
             report.append(feedback)
         submission.add_feedback("tests", "\n".join(report))
+
         lint_report = self.linter(submission)
         style_score = round(self.style_calc(lint_report) * self.style_marks)
         score += style_score
@@ -502,5 +537,17 @@ class MarkingScheme:
             f"Style score: {style_score} / {self.style_marks}",
         ]
         submission.add_feedback("style", "\n".join(style_feedback))
+
+
         submission.percentage = round(100 * score / total_score)
         submission.score = self.format_return(score, total_score)
+
+        finish_time = time.time()
+        elapsed = finish_time - self.last_marked_time
+        cum_time = finish_time - self.start_time
+        self.last_marked_time = finish_time
+        self.timing_stats.append((submission.reference, elapsed, cum_time))
+        logger.info(
+            f'Submission {submission.reference}, elapsed: {elapsed:5.5g}, '
+            f'total time: {cum_time:5.5g}'
+        )
