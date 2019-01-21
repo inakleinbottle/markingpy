@@ -3,10 +3,10 @@
 import sys
 import statistics
 from argparse import ArgumentParser
+from functools import partial
 from pathlib import Path
 
-from .config import GLOBAL_CONF
-from .markscheme import import_markscheme
+from .markscheme import import_markscheme, MarkschemeError
 from .grader import Grader
 
 
@@ -18,156 +18,235 @@ def run():
     """
     General markingpy cli
     """
-    config = GLOBAL_CONF
     parser = ArgumentParser(
-        description=(
-            "Markingpy grading tool."
+            description=(
+                "Markingpy grading tool."
+                ),
+            usage=(
+                    'markingpy [--verbose] [SCHEME|COMMAND] [OPTIONS]'
+                ),
+            add_help=False
         )
-    )
-    args = parser.parse_args()
-    return 0
+    parser.add_argument(
+            '-v',
+            '--verbose',
+            action='store_true',
+            help='Run markingpy in verbose mode'
+            )
+    parser.add_argument(
+            'scheme_or_command',
+            help='Marking scheme or command to use.'
+            )
+    args, missed_args = parser.parse_known_args()
+
+    cmd = args.scheme_or_command
+    fn = getattr(TerminalCommands, cmd, None)
+    if fn is None:
+        return handle_marking_scheme(cmd, missed_args, parser)
+    return fn(args)
 
 
-
-
-class MarkschemeCommands:
+class TerminalCommands:
 
     @staticmethod
-    def run(markscheme, cli_args):
+    def create(args):
         parser = ArgumentParser(
-            usage=f'markingpy {sys.argv[1]} run [OPTIONS]',
-            description=(
-                "Run the markingpy grader using the marking scheme "
-                f"{sys.argv[1]}. The grader will use the settings "
-                f"defined in {sys.argv[1]} along with any default "
-                "values (set in .markingpy if this exists) or options passed "
-                "to this command."
-            )
-        )
-
+                    description='Create a new marking scheme'
+                )
         parser.add_argument(
+                    'path',
+                    help='Path in which to create new marking scheme.'
+                )
+
+        parser.parse_args(args)
+        print('Creating new marking scheme')
+
+
+def handle_marking_scheme(path, args, root_parser):
+    # noinspection PyBroadException
+    try:
+        markscheme = import_markscheme(path)
+    except Exception:
+        root_parser.print_help()
+        root_parser.exit()
+
+    parser = ArgumentParser(
+                usage=f'markingpy {path}'
+            )
+    sub_parsers = parser.add_subparsers()
+    run_parser = sub_parsers.add_parser(
+                'run',
+                help=(
+                    "Run the markingpy grader using the marking scheme "
+                    f"{path}. The grader will use the settings "
+                    f"defined in {path} along with any default "
+                    "values (set in .markingpy if this exists) or options "
+                    "passed to this command."
+                    )
+            )
+    run_parser.add_argument(
             "--style-formula",
             type=str,
             help="Formula used to generate a score from the linter report."
-        )
-        parser.add_argument(
+            )
+    run_parser.add_argument(
             "--style-marks",
             type=int,
             help="Number of marks available for coding style."
-        )
-        parser.add_argument(
+            )
+    run_parser.add_argument(
             "--score-style",
             help="Formatting style for marks to be displayed in feedback."
-        )
-        parser.add_argument(
+            )
+    run_parser.add_argument(
             "--submission-path",
             type=str,
             help="Path to submissions."
-        )
-        parser.add_argument(
+            )
+    run_parser.add_argument(
             "--marks-db",
             type=str,
             help="Path to database to store submission results and feedback."
-        )
-        parser.add_argument(
+            )
+    run_parser.add_argument(
             "--marks",
             type=int,
             help=(
-                "Total marks available for this coursework." 
-                " This option is only used for validation."
+                    "Total marks available for this coursework."
+                    " This option is only used for validation."
+                )
             )
-        )
-        markscheme.update_config(vars(parser.parse_args(cli_args)))
-        markscheme.validate()
-        grader = Grader(markscheme)
-        with grader:
-            grader.grade_submissions()
+    run_parser.set_defaults(func=partial(run_ms, markscheme))
 
-    @staticmethod
-    def grades(markscheme, cli_args):
-        parser = ArgumentParser(
-            usage=f'markingpy {sys.argv[1]} grades [OPTIONS]',
-            description=(
-                "Print the grades obtained in the last run of the grader"
-                "with this marking scheme. This will load the results in"
-                "the default database, the database specified in "
-                f"{sys.argv[1]} or the database specified in the options for "
-                "this command."
+    summary_parser = sub_parsers.add_parser(
+                'summary',
+                help=(
+                    "Print a summary of grades obtained in the last run of the "
+                    "grader with this marking scheme. This will load the "
+                    "results in the default database, the database specified in"
+                    f" {path} or the database specified in the options for "
+                    "this command."
+                    )
             )
-        )
-        parser.add_argument(
+    summary_parser.add_argument(
             "--marks-db",
             type=str,
             help="Path to database to store submission results and feedback."
-        )
-        markscheme.update_config(vars(parser.parse_args(cli_args)))
-        subs = markscheme.get_db().fetch_all()
-        for sid, perc, _ in subs:
-            print(f"{sid:60}: {perc}%")
-
-    @staticmethod
-    def summary(markscheme, cli_args):
-        parser = ArgumentParser(
-            usage=f'markingpy {sys.argv[1]} summary [OPTIONS]',
-            description=(
-                "Print a summary of grades obtained in the last run of the "
-                "grader with this marking scheme. This will load the results "
-                "in the default database, the database specified in "
-                f"{sys.argv[1]} or the database specified in the options for "
-                "this command."
             )
-        )
-        parser.add_argument(
+    summary_parser.set_defaults(func=partial(summary, markscheme))
+
+    grades_parser = sub_parsers.add_parser(
+                'grades',
+                help=(
+                    "Print the grades obtained in the last run of the grader"
+                    "with this marking scheme. This will load the results in"
+                    "the default database, the database specified in "
+                    f"{path} or the database specified in the options for "
+                    "this command."
+                    )
+            )
+    grades_parser.add_argument(
             "--marks-db",
             type=str,
             help="Path to database to store submission results and feedback."
-        )
-        markscheme.update_config(vars(parser.parse_args(cli_args)))
-        subs = markscheme.get_db().fetch_all()
-        percs = [sub[1] for sub in subs]
-        mean = statistics.mean(percs)
-        stdev = statistics.stdev(percs)
-        print(
-            f"Summary: Number of submissions = {len(subs)}, "
-            f"Mean = {mean}%, Standard = {stdev:.4}%"
-        )
-
-    @staticmethod
-    def dump(markscheme, cli_args):
-        parser = ArgumentParser(
-            usage=f'markingpy {sys.argv[1]} dump [OPTIONS] path',
-            description=(
-                "Dump the feedback obtained in the last run of the "
-                "grader with this marking scheme into the directory 'path'. "
-                "This will load the results in the default database, "
-                f"the database specified in {sys.argv[1]} "
-                "or the database specified in the options for "
-                "this command."
             )
-        )
-        parser.add_argument(
-            "--marks-db",
-            type=str,
-            help="Path to database to store submission results and feedback."
-        )
-        parser.add_argument(
-            "path",
-            default=".",
-            nargs="?",
-            help="Directory to populate with feedback."
-        )
-        args = vars(parser.parse_args(cli_args))
-        path = Path(args.pop("path"))
-        if path.exists() and not path.is_dir():
-            raise ValueError('{path} is not a directory')
-        path.mkdir(exists_ok=True)
-        markscheme.update_config(args)
-        for sub_id, _, fb in markscheme.get_db().fetch_all():
-            (path / (sub_id + ".txt")).write_text(fb)
+    grades_parser.set_defaults(func=partial(grades, markscheme))
 
-    @staticmethod
-    def validate(markscheme, cli_args):
-        markscheme.validate()
+    dump_parser = sub_parsers.add_parser(
+                'dump',
+                help=(
+                    "Dump the feedback obtained in the last run of the "
+                    "grader with this marking scheme into the directory 'path'. "
+                    "This will load the results in the default database, "
+                    f"the database specified in {path} "
+                    "or the database specified in the options for "
+                    "this command."
+                    )
+                )
+    dump_parser.add_argument(
+                "--marks-db",
+                type=str,
+                help="Path to database to store submission results and feedback."
+                )
+    dump_parser.add_argument(
+                "path",
+                default=".",
+                nargs="?",
+                help="Directory to populate with feedback."
+                )
+    dump_parser.set_defaults(func=partial(dump, markscheme))
+
+    validate_parser = sub_parsers.add_parser(
+                'validate',
+                help=(
+                        'Validate the marking scheme by testing the model '
+                        'solutions against the marking criteria. The test is '
+                        'valid if the model solutions obtain maximum marks in '
+                        'each exercise.'
+                    )
+            )
+    validate_parser.set_defaults(func=partial(validate, markscheme))
+
+    help_parser = sub_parsers.add_parser(
+                'help',
+                help='Print the markingpy help to console.'
+            )
+
+    def display_help(a):
+        print('help')
+        parser.print_help()
+        parser.exit()
+    help_parser.set_defaults(func=display_help)
+
+    new_args = parser.parse_args(args)
+    new_args.func(new_args)
+
+
+def run_ms(markscheme, args):
+    print('Running Grader')
+    markscheme.update_config(vars(args))
+    markscheme.validate()
+    grader = Grader(markscheme)
+    with grader:
+        grader.grade_submissions()
+
+
+def summary(markscheme, args):
+    print('Printing summary')
+    markscheme.update_config(vars(args))
+    subs = markscheme.get_db().fetch_all()
+    percs = [sub[1] for sub in subs]
+    mean = statistics.mean(percs)
+    stdev = statistics.stdev(percs)
+    print(
+        f"Summary: Number of submissions = {len(subs)}, "
+        f"Mean = {mean}%, Standard = {stdev:.4}%"
+        )
+
+
+def grades(markscheme, args):
+    print('Printing grades')
+    markscheme.update_config(vars(args))
+    subs = markscheme.get_db().fetch_all()
+    for sid, perc, _ in subs:
+        print(f"{sid:60}: {perc}%")
+
+
+def dump(markscheme, args):
+    print('Dumping feedback')
+    args = vars(args)
+    path = Path(args.pop("path"))
+    if path.exists() and not path.is_dir():
+        raise ValueError('{path} is not a directory')
+    path.mkdir(exist_ok=True)
+    markscheme.update_config(args)
+    for sub_id, _, fb in markscheme.get_db().fetch_all():
+        (path / (sub_id + ".txt")).write_text(fb)
+
+
+def validate(markscheme, args):
+    print('Validating marking scheme')
+    markscheme.validate()
 
 
 def main():
@@ -175,25 +254,13 @@ def main():
     Main command line runner.
     """
     try:
-        path = sys.argv[1]
-    except IndexError:
-        return run()
-
-    args = sys.argv[3:]
-    try:
-        cmd = sys.argv[2]
-    except IndexError:
-        cmd = "run"
-        args = []
-
-
-    markscheme = import_markscheme(path)
-    try:
-        fn = getattr(MarkschemeCommands, cmd)
-    except AttributeError:
-        args = [cmd] + args
-        fn = MarkschemeCommands.run
-    fn(markscheme, args)
+        run()
+    except KeyboardInterrupt:
+        print('Keyboard interrupt')
+    except Exception as err:
+        import traceback
+        tb = '\n'.join(traceback.format_tb(err.__traceback__))
+        print(f"{err.__class__.__name__}: {err}\n{tb}")
 
 
 if __name__ == "__main__":

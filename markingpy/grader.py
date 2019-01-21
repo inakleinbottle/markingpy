@@ -4,6 +4,7 @@ Grading tool for python files.
 
 import sys
 import logging
+import traceback
 from pathlib import Path
 from .submission import Submission
 
@@ -42,7 +43,16 @@ class Grader:
         """
         # TODO: Change to initial runtime database + post processing
         for submission in self.submissions:
-            self.grade_submission(submission, **opts)
+            try:
+                self.grade_submission(submission, **opts)
+            except:
+                type_, val, tb = sys.exc_info()
+                print(
+                        f'Error marking {submission.reference}\n'
+                        f'{type_.__name__}: {val}'
+                        )
+                traceback.print_tb(tb)
+                continue
 
 
     # context manager

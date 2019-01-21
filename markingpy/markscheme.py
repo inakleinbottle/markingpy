@@ -97,11 +97,16 @@ def mark_scheme(**params):
 
 
 def get_spec_path_or_module(name, modname='markingpy_marking_scheme'):
-    path = Path(name)
-    if path.is_file():
-        return importlib.util.spec_from_file_location(modname, str(path))
+    path = Path(name).resolve()
+    if path.exists():
+        return importlib.util.spec_from_file_location(
+                    modname,
+                    location=path
+                )
 
     spec = importlib.util.find_spec(name)
+    if spec is None:
+        return spec
     spec.name = modname
     return spec
 
@@ -323,7 +328,8 @@ class MarkingScheme:
         if finder is None and submission_path is None:
             self.finder = finders.DirectoryFinder(Path(".", "submissions"))
         elif finder is None and submission_path:
-            self.finder = finders.DirectoryFinder(submission_path)
+            pth = Path(submission_path).resolve()
+            self.finder = finders.DirectoryFinder(pth)
         elif isinstance(finder, finders.BaseFinder):
             self.finder = finder
         else:
@@ -407,7 +413,9 @@ class MarkingScheme:
         """
         if not self.unique_id:
             mod = importlib.import_module(module_name)
-            self.unique_id = hashlib.md5(inspect.getsource(mod)).hexdigest()
+            self.unique_id = hashlib.md5(
+                        inspect.getsource(mod).encode()
+                    ).hexdigest()
 
     def get_db(self):
         """
@@ -478,7 +486,7 @@ class MarkingScheme:
         total_score = 0
         report = []
 
-        for mark, total_marks, feedback in (
+        for mark, total_marks, feedback, _ in (
             ex.run(ns) for ex in self.exercises
         ):
             score += mark
