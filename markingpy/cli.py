@@ -5,6 +5,7 @@ import statistics
 from argparse import ArgumentParser
 from functools import partial
 from pathlib import Path
+import traceback
 
 from .markscheme import import_markscheme, MarkschemeError
 from .grader import Grader
@@ -66,8 +67,9 @@ def handle_marking_scheme(path, args, root_parser):
     # noinspection PyBroadException
     try:
         markscheme = import_markscheme(path)
-    except Exception as err:
-        root_parser.print_help()
+    except Exception:
+        traceback.print_exc()
+        #root_parser.print_help()
         root_parser.exit()
 
     parser = ArgumentParser(

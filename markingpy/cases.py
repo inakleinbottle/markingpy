@@ -6,7 +6,7 @@ from io import StringIO
 from typing import Callable
 
 
-from .utils import log_calls, time_run
+from .utils import log_calls, time_run, str_format_args
 from .execution import ExecutionContext
 from . import magic
 
@@ -21,6 +21,7 @@ __all__ = [
     'TestFeedback',
     'MethodTest',
     'MethodTimingTest',
+    'Call',
 ]
 
 
@@ -81,11 +82,13 @@ class BaseTest(magic.MagicBase):
         :param other:
         :return: ExecutionContext instance
         """
+        raise NotImplementedError
 
     def run(self, other):
         """
         Run the test.
         """
+        raise NotImplementedError
 
     def get_success(self, ctx, test_output):
         """
@@ -128,14 +131,17 @@ class BaseTest(magic.MagicBase):
         marks = self.get_marks(context, test_output, success)
         msg = "Outcome: {}, Marks: {}"
         feedback = [str(self), msg.format(outcome, marks)]
+
+        stdout = context.stdout.getvalue().strip()
+        if stdout:
+            feedback.append(self.format_stdout(stdout))
+
         err, warnings = context.error, context.warnings
         if err:
             feedback.append(self.format_error(err))
         if warnings:
             feedback.append(self.format_warnings(warnings))
-        stdout = context.stdout.getvalue().strip()
-        if stdout:
-            feedback.append(self.format_stdout(stdout))
+
         return TestFeedback(self, marks, "\n".join(feedback))
 
 
@@ -175,7 +181,10 @@ class CallTest(BaseTest):
         return ExecutionContext()
 
     def run(self, other):
+        args_msg = str_format_args(self.call_args, self.call_kwargs)
+        print(f'Testing with input: ({args_msg})')
         output = other(* self.call_args, ** self.call_kwargs)
+        print(f'Expected: {self.expected}, got: {output}')
         return output == self.expected
 
 
@@ -207,6 +216,7 @@ class TimingTest(BaseTest):
     """
 
     def __init__(self, cases, tolerance, **kwargs):
+        super().__init__(**kwargs)
         if isinstance(cases, dict):
             # cases from dict - preset targets
             cases = [
@@ -228,9 +238,14 @@ class TimingTest(BaseTest):
         if not cases:
             raise ValueError("Cases not correctly defined.")
 
+        logger.info(
+                'Adding timing test with cases:'
+                f'\n{", ".join(str(c) for c in cases)}\n)'
+                )
+
         self.cases = cases
         self.tolerance = tolerance
-        super().__init__(**kwargs)
+
 
     @log_calls
     def create_test(self, other):
@@ -239,7 +254,9 @@ class TimingTest(BaseTest):
     def run(self, other):
         success = True
         for args, kwargs, target in self.cases:
+            print(f'Running: ({str_format_args(args, kwargs)})')
             runtime = time_run(other, args, kwargs)
+            print(f'Target time: {target:5.5g}, run time: {runtime:5.5g}')
             if runtime is None:
                 raise ExecutionFailedError
 

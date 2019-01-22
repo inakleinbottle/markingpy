@@ -377,9 +377,9 @@ class MarkingScheme(magic.MagicBase):
             # This also locks all exercises into submission mode.
             try:
                 ex.validate()
-            except ExerciseError as err:
-                raise MarkschemeError('Failed to validate marking scheme') \
-                    from err
+            except ExerciseError:
+                logger.error(f'Failed to validate {str(ex)}')
+                raise
             logger.debug(f'Validation of {ex.name}: Passed')
 
         if self.marks is not None:

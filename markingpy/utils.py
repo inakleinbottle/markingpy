@@ -92,6 +92,21 @@ DEFAULT_STYLE_FORMULA = (
 default_style_calc = build_style_calc(DEFAULT_STYLE_FORMULA)
 
 
+def str_format_args(args, kwargs):
+    """
+    Format the args and kwargs of a function call.
+
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    args_msg = ', '.join(str(a) for a in args)
+    if kwargs:
+        args_msg += ', ' if args_msg else ''
+        args_msg += ', '.join(f'{k}={v}'
+                              for k, v in kwargs.items())
+    return args_msg
+
 def time_run(func, args, kwargs):
     """
     Time the running of a function.
@@ -102,12 +117,7 @@ def time_run(func, args, kwargs):
     :return:
     """
     start_time = time()
-    # noinspection PyBroadException
-    try:
-        func(*args, **kwargs)
-    except Exception:
-        return None
-
+    func(*args, **kwargs)
     runtime = time() - start_time
     logger.debug(f"Timed run {func.__name__}: {runtime}")
     return runtime
