@@ -109,7 +109,7 @@ class BaseTest(magic.MagicBase):
         return "\n".join(
             self.indent + line.strip()
             for warning in warnings
-            for line in str(warning).strip().splitlines()
+            for line in str(warning.message).strip().splitlines()
         )
 
     def format_stdout(self, stdout):
@@ -168,7 +168,7 @@ class CallTest(BaseTest):
         super().__init__(*args, **kwargs)
         self.expected = self.exercise.func(
             * self.call_args, ** self.call_kwargs
-        )
+            )
 
     @log_calls
     def create_test(self, other):

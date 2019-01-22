@@ -120,6 +120,7 @@ class Exercise(ExerciseBase):
 
         :return:
         """
+        logger.info(f'Validating exercise: {self.name}')
         self.lock()
         total_marks = self.total_marks
         if self.marks is not None:
@@ -147,6 +148,7 @@ class Exercise(ExerciseBase):
                 f'Model solution for exercise {self.name} does not receive '
                 f'full marks.\n\n{result.feedback}'
             )
+        logger.info(f'Validation: Passed')
 
     def __str__(self):
         return self.name

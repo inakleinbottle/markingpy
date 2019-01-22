@@ -66,7 +66,7 @@ def handle_marking_scheme(path, args, root_parser):
     # noinspection PyBroadException
     try:
         markscheme = import_markscheme(path)
-    except Exception:
+    except Exception as err:
         root_parser.print_help()
         root_parser.exit()
 

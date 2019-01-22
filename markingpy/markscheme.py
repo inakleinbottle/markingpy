@@ -14,9 +14,10 @@ from functools import wraps
 from pathlib import Path
 
 from . import finders
+from . import magic
 
 from .config import GLOBAL_CONF
-from .exercises import Exercise
+from .exercises import Exercise, ExerciseError
 from .linters import linter
 from .utils import build_style_calc, log_calls
 from .storage import get_db
@@ -253,7 +254,8 @@ class Importer:
             return self.import_(name, *args)
 
 
-class MarkingScheme:
+# noinspection PyUnresolvedReferences
+class MarkingScheme(magic.MagicBase):
     """
     Marking scheme class.
 
@@ -285,6 +287,9 @@ class MarkingScheme:
         equivalent to ``'{mark}/{total} ({percentage})'``.
     :param marks_db: Path to database to store submission results and feedback.
     """
+    allowed_modules: split_commas
+    forbidden_modules: split_commas
+    preload_modules: split_commas
 
     def __init__(
             self,
@@ -308,9 +313,9 @@ class MarkingScheme:
         self.marks = marks
         self.style_marks = style_marks
         self.score_style = score_style
-        self.allowed_modules = allowed_modules or []
-        self.forbidden_modules = forbidden_modules or []
-        self.preload_modules = preload_modules or []
+        self.allowed_modules = allowed_modules
+        self.forbidden_modules = forbidden_modules
+        self.preload_modules = preload_modules
 
         # set up timing
         self.start_time = None
@@ -366,12 +371,17 @@ class MarkingScheme:
 
         :raises: :class:`MarkingSchemeError` on validation failure.
         """
-        logger.debug('Validating Markscheme')
+        logger.info('Validating Markscheme')
         for ex in self.exercises:
             # ExerciseError raised if any exercise fails to validate
             # This also locks all exercises into submission mode.
-            ex.validate()
+            try:
+                ex.validate()
+            except ExerciseError as err:
+                raise MarkschemeError('Failed to validate marking scheme') \
+                    from err
             logger.debug(f'Validation of {ex.name}: Passed')
+
         if self.marks is not None:
             # If validation marks parameter provided, validate the mark totals
             marks_from_ex = sum(ex.marks for ex in self.exercises)
@@ -382,9 +392,9 @@ class MarkingScheme:
                     f'Total marks available in marking scheme '
                     f'({total_marks_for_ms}) do not match the marks allocated '
                     f'in the marking scheme configuration ({self.marks})'
-                )
+                    )
 
-            logger.debug(f'Marking validation: Passed')
+        logger.info(f'Marking validation: Passed')
 
     def add_exercise(self, exercise):
         """
@@ -510,9 +520,10 @@ class MarkingScheme:
         if self.start_time is None:
             self.start_time = self.last_marked_time = time.time()
 
+        # Generate the submission functions by executing into a prepared
+        # namespace.
         code = submission.compile()
         ns = self.prepare_namespace()
-
         with self.sandbox(ns, submission):
             exec(code, ns)
 
@@ -520,6 +531,7 @@ class MarkingScheme:
         total_score = 0
         report = []
 
+        # Run tests
         for mark, total_marks, feedback, _ in (
             ex.run(ns) for ex in self.exercises
         ):
@@ -538,10 +550,11 @@ class MarkingScheme:
         ]
         submission.add_feedback("style", "\n".join(style_feedback))
 
-
+        # Calculate scores
         submission.percentage = round(100 * score / total_score)
         submission.score = self.format_return(score, total_score)
 
+        # Timing statistics
         finish_time = time.time()
         elapsed = finish_time - self.last_marked_time
         cum_time = finish_time - self.start_time
