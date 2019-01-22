@@ -19,7 +19,8 @@ from .config import LOGGING_LEVELS
 
 logger = logging.getLogger(__name__)
 __all__ = [
-    'log_calls', 'build_style_calc', 'DEFAULT_STYLE_FORMULA', 'time_run'
+    'log_calls', 'build_style_calc', 'DEFAULT_STYLE_FORMULA', 'time_run',
+    'str_format_args'
 ]
 
 
@@ -36,16 +37,9 @@ def log_calls(level=None):
 
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # msg = "Call {}(".format(func.__name__) + ", ".join(map(repr, args))
-            #if args and kwargs:
-            #    msg += ", "
-            #msg += ", ".join(
-            #    "{}={}".format(k, repr(v)) for k, v in kwargs.items()
-            #)
-            #msg += ")"
             msg = (
                 f'Call {func.__name__}'
-                f'({", ".join(str(arg)[:5] for arg in args)})'
+                f'({str_format_args(args, kwargs)})'
             )
             logger.log(level, msg)
             return func(*args, **kwargs)
