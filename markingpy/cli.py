@@ -206,8 +206,7 @@ def handle_marking_scheme(path, args, root_parser):
 def run_ms(markscheme, args):
     markscheme.update_config(vars(args))
     markscheme.validate()
-    grader = Grader(markscheme)
-    with grader:
+    with Grader(markscheme) as grader:
         grader.grade_submissions()
 
 

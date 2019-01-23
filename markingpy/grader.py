@@ -2,11 +2,14 @@
 Grading tool for python files.
 """
 
-import sys
+
 import logging
+import os
+import sys
+import tempfile
 import traceback
+
 from pathlib import Path
-from .submission import Submission
 
 logger = logging.getLogger(__name__)
 __all__ = ['Grader']
@@ -24,9 +27,11 @@ class Grader:
         self.markscheme = markscheme
         self.submissions = markscheme.get_submissions()
         self.db = markscheme.get_db()
-        self.at_exit = []
+        self.temporary_directory = tempfile.TemporaryDirectory()
+        self.at_exit = [self.temporary_directory.cleanup]
+        self.path = Path(self.temporary_directory.name)
 
-    def grade_submission(self, submission, **opts):
+    def grade_submission(self, submission):
         """
         Run the grader tests on a submission.
         """
@@ -43,9 +48,10 @@ class Grader:
         """
         # TODO: Change to initial runtime database + post processing
         for submission in self.submissions:
+            # noinspection PyBroadException
             try:
-                self.grade_submission(submission, **opts)
-            except:
+                self.grade_submission(submission)
+            except Exception:
                 type_, val, tb = sys.exc_info()
                 print(
                         f'Error marking {submission.reference}\n'
@@ -54,13 +60,12 @@ class Grader:
                 traceback.print_tb(tb)
                 continue
 
-
     # context manager
     def __enter__(self):
-        # sys.path.insert(0, self.markscheme.submission_path)
+        os.chdir(self.path)
         return self
 
     def __exit__(self, err_type, err_val, tb):
-        # sys.path.remove(self.markscheme.submission_path)
+
         for fn in self.at_exit:
             fn()

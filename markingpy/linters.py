@@ -1,4 +1,9 @@
-import tempfile
+"""
+Code style analysis tools
+"""
+# TODO: This needs a rework. There is no real need for a new linter instance
+#  to be created for every submission.
+
 from pathlib import Path
 from pylint.lint import PyLinter
 from pylint.reporters.text import TextReporter
@@ -46,9 +51,9 @@ def linter(submission):
     )
     linter.load_command_line_configuration(args)
     linter.set_reporter(TextReporter(report))
-    with tempfile.TemporaryDirectory() as directory:
-        path = Path(directory, "temp.py")
-        path.write_text(submission.source)
-        linter.check(path)
+
+    path = Path("submission.py")
+    path.write_text(submission.source)
+    linter.check(path)
     report.set_stats(linter.stats)
     return report

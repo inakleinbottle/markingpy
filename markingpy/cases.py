@@ -200,7 +200,6 @@ class CallTest(BaseTest):
             * self.call_args, ** self.call_kwargs
             )
 
-    @log_calls
     def create_test(self, other):
         return ExecutionContext()
 
@@ -289,7 +288,6 @@ class TimingTest(BaseTest):
         self.cases = cases
         self.tolerance = tolerance
 
-    @log_calls
     def create_test(self, other):
         return ExecutionContext()
 
@@ -344,7 +342,6 @@ class Test(BaseTest):
     def get_name(self):
         return self.test_func.__name__
 
-    @log_calls
     def create_test(self, other):
         ctx = ExecutionContext()
         ctx.add_context(self.exercise.set_function(other))

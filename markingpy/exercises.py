@@ -117,8 +117,7 @@ class Exercise(ExerciseBase):
         """
         Check that the exercise is valid.
 
-
-        :return:
+        :raises ExerciseError: If the exercise fails to validate.
         """
         logger.info(f'Validating exercise: {self.name}')
         self.lock()
