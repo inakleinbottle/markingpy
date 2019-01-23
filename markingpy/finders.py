@@ -25,18 +25,26 @@ class DirectoryFinder(BaseFinder):
 
     def __init__(self, path):
         path = self.path = Path(path)
-        if not path.is_dir():
+        if path.exists() and not path.is_dir():
+            print(path)
             raise NotADirectoryError("Expected a directory")
 
-        self.file_list = [
-            file
-            for file in path.iterdir()
-            if file.is_file()
-            if file.name.endswith(".py")
-        ]
+    def get_file_list(self):
+        try:
+            return [
+                    file
+                    for file in self.path.iterdir()
+                    if file.is_file()
+                    if file.name.endswith(".py")
+                    ]
+        except AttributeError:
+            return None
 
     def get_submissions(self):
-        for file in self.file_list:
+        file_list = self.get_file_list()
+        if file_list is None:
+            raise RuntimeError('No submissions found')
+        for file in file_list:
             ref = file.name[:-3]
             source = file.read_text()
             yield submission.Submission(ref, source)

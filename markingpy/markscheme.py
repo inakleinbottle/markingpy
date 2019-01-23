@@ -1,21 +1,23 @@
 import builtins
 import hashlib
+import importlib
 import importlib.util
 import inspect
 import logging
 import sys
+import time
 import warnings
 
-from builtins import __import__
-from collections import ChainMap
+from builtins import __import__, exec as b_exec, eval as b_eval
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 
 from . import finders
+from . import magic
 
 from .config import GLOBAL_CONF
-from .exercises import Exercise
+from .exercises import Exercise, ExerciseError
 from .linters import linter
 from .utils import build_style_calc, log_calls
 from .storage import get_db
@@ -97,11 +99,16 @@ def mark_scheme(**params):
 
 
 def get_spec_path_or_module(name, modname='markingpy_marking_scheme'):
-    path = Path(name)
-    if path.is_file():
-        return importlib.util.spec_from_file_location(modname, str(path))
+    path = Path(name).resolve()
+    if path.exists():
+        return importlib.util.spec_from_file_location(
+                    modname,
+                    location=path
+                )
 
     spec = importlib.util.find_spec(name)
+    if spec is None:
+        return spec
     spec.name = modname
     return spec
 
@@ -157,7 +164,12 @@ class WrappedModule:
         return str(self.mod)
 
     def __getattr__(self, item):
-        return getattr(self.mod, item)
+        if not item in self.__dict__:
+            return getattr(self.mod, item)
+        raise AttributeError(f'{self.__name__} has no attribute {item}')
+
+    def __setattr__(self, name, val):
+        self.__dict__[name] = val
 
 
 class ControlledFunction:
@@ -204,20 +216,29 @@ class Importer:
     access to certain attributes in a module.
     """
 
-    def __init__(self, allowed=None, forbidden=None,
-                 import_=None, eval_=None, exec_=None):
+    def __init__(self, namespace, allowed=None, forbidden=None,
+                 import_=__import__, eval_=None, exec_=None):
+        self.namespace = namespace
         self.allowed = allowed if allowed else []
         self.forbidden = forbidden if forbidden else []
         self.eval_ = eval_
         self.exec_ = exec_
         self.loaded_modules = ModuleList()
-        self.import_ = import_ or __import__
+        self.import_ = import_
 
     def _is_forbidden(self, name):
         return name in self.forbidden
 
     def _is_not_allowed(self, name):
         return name not in self.allowed
+
+    @contextmanager
+    def restore(self):
+        self.namespace['__builtins__']['__import__'] = __import__
+        try:
+            yield
+        finally:
+            self.namespace['__builtins__']['__import__'] = self
 
     def __call__(self, name, *args):
         if self._is_forbidden(name):
@@ -226,39 +247,15 @@ class Importer:
             )
         if self._is_not_allowed(name):
             warnings.warn(
-                f'User import module {name}'
+                f'User imported module {name}'
             )
-        if name not in self.loaded_modules:
-            with self.eval_.restore(), self.exec_.restore():
-                self.loaded_modules[name] = self.import_(name, *args)
-        return self.loaded_modules[name]
+
+        with self.eval_.restore(), self.exec_.restore(), self.restore():
+            return self.import_(name, *args)
 
 
-def prepare_namespace():
-    """
-    Prepare the namespace for a submission.
-
-    Create a new namespace to be used to exec submission code. The standard
-    builtins will be loaded with the ``__import__`` function replaced by a
-    controlled importer, and ``exec`` and ``eval`` disabled.
-
-    :return: namespace ``dict``, :class:`Importer`,
-        :class:`ControlledFunction` ``eval``,
-        :class:`ControlledFunction` ``exec``
-    """
-    ns = {'__builtins__': builtins.__dict__.copy()}
-    eval_ = eval
-    exec_ = exec
-    c_eval = ControlledFunction(eval_)
-    c_exec = ControlledFunction(exec_)
-    importer = Importer(eval_=c_eval, exec_=c_exec)
-    ns['__builtins__']['__import__'] = importer
-    ns['__builtins__']['eval'] = c_eval
-    ns['__builtins__']['exec'] = c_exec
-    return ns, importer, c_eval, c_exec
-
-
-class MarkingScheme:
+# noinspection PyUnresolvedReferences
+class MarkingScheme(magic.MagicBase):
     """
     Marking scheme class.
 
@@ -290,19 +287,25 @@ class MarkingScheme:
         equivalent to ``'{mark}/{total} ({percentage})'``.
     :param marks_db: Path to database to store submission results and feedback.
     """
+    allowed_modules: split_commas
+    forbidden_modules: split_commas
+    preload_modules: split_commas
 
     def __init__(
-        self,
-        unique_id=None,
-        marks=None,
-        style_formula=None,
-        style_marks=10,
-        score_style="basic",
-        submission_path=None,
-        finder=None,
-        marks_db=None,
-        **kwargs,
-    ):
+            self,
+            unique_id=None,
+            marks=None,
+            style_formula=None,
+            style_marks=10,
+            score_style="basic",
+            submission_path=None,
+            finder=None,
+            marks_db=None,
+            allowed_modules=None,
+            forbidden_modules=None,
+            preload_modules=None,
+            **kwargs,
+            ):
         # Unique identifier - hash of path with user
         self.unique_id = unique_id
 
@@ -310,6 +313,14 @@ class MarkingScheme:
         self.marks = marks
         self.style_marks = style_marks
         self.score_style = score_style
+        self.allowed_modules = allowed_modules
+        self.forbidden_modules = forbidden_modules
+        self.preload_modules = preload_modules
+
+        # set up timing
+        self.start_time = None
+        self.last_marked_time = None
+        self.timing_stats = []
 
         # Set the exercises
         self.exercises = Exercise.get_all_exercises()
@@ -323,7 +334,8 @@ class MarkingScheme:
         if finder is None and submission_path is None:
             self.finder = finders.DirectoryFinder(Path(".", "submissions"))
         elif finder is None and submission_path:
-            self.finder = finders.DirectoryFinder(submission_path)
+            pth = Path(submission_path).resolve()
+            self.finder = finders.DirectoryFinder(pth)
         elif isinstance(finder, finders.BaseFinder):
             self.finder = finder
         else:
@@ -359,12 +371,17 @@ class MarkingScheme:
 
         :raises: :class:`MarkingSchemeError` on validation failure.
         """
-        logger.debug('Validating Markscheme')
+        logger.info('Validating Markscheme')
         for ex in self.exercises:
             # ExerciseError raised if any exercise fails to validate
             # This also locks all exercises into submission mode.
-            ex.validate()
+            try:
+                ex.validate()
+            except ExerciseError:
+                logger.error(f'Failed to validate {str(ex)}')
+                raise
             logger.debug(f'Validation of {ex.name}: Passed')
+
         if self.marks is not None:
             # If validation marks parameter provided, validate the mark totals
             marks_from_ex = sum(ex.marks for ex in self.exercises)
@@ -375,9 +392,9 @@ class MarkingScheme:
                     f'Total marks available in marking scheme '
                     f'({total_marks_for_ms}) do not match the marks allocated '
                     f'in the marking scheme configuration ({self.marks})'
-                )
+                    )
 
-            logger.debug(f'Marking validation: Passed')
+        logger.info(f'Marking validation: Passed')
 
     def add_exercise(self, exercise):
         """
@@ -407,7 +424,9 @@ class MarkingScheme:
         """
         if not self.unique_id:
             mod = importlib.import_module(module_name)
-            self.unique_id = hashlib.md5(inspect.getsource(mod)).hexdigest()
+            self.unique_id = hashlib.md5(
+                        inspect.getsource(mod).encode()
+                    ).hexdigest()
 
     def get_db(self):
         """
@@ -447,19 +466,49 @@ class MarkingScheme:
             )
 
     @contextmanager
-    def sandbox(self):
+    def sandbox(self, ns, submission):
         """
         Create a sandbox to exec submission code in a context manager. This
         replaces ``sys.modules`` with a chain map so that imported modules will
         not have global effects. Upon exit, ``sys.modules`` is restored to
         its original state.
         """
-
-        sys.modules = ChainMap({}, sys.modules)
-        try:
+        with warnings.catch_warnings(record=True) as warns:
             yield
-        finally:
-            sys.modules = sys.modules.maps[1]
+            for w in warns:
+                print(w.message)
+            submission.add_feedback('execution', warns)
+
+    def prepare_namespace(self):
+        """
+        Prepare the namespace for a submission.
+
+        Create a new namespace to be used to exec submission code. The standard
+        builtins will be loaded with the ``__import__`` function replaced by a
+        controlled importer, and ``exec`` and ``eval`` disabled.
+
+        :return: namespace ``dict``
+        """
+        ns = {'__builtins__': builtins.__dict__.copy()}
+
+        c_eval = ControlledFunction(b_eval)
+        c_exec = ControlledFunction(b_exec)
+
+        importer = Importer(ns,
+                            allowed=self.allowed_modules,
+                            forbidden=self.forbidden_modules,
+                            eval_=c_eval,
+                            exec_=c_exec)
+
+        ns['__builtins__']['__import__'] = importer
+        ns['__builtins__']['eval'] = c_eval
+        ns['__builtins__']['exec'] = c_exec
+
+        ns['sys'] = WrappedModule(sys)
+        for mod in self.preload_modules:
+            ns[mod] = WrappedModule(importlib.import_module(mod))
+
+        return ns
 
     @log_calls
     def run(self, submission):
@@ -468,23 +517,29 @@ class MarkingScheme:
 
         :param submission: Submission to grade
         """
-        code = submission.compile()
-        ns, importer, c_eval, c_exec = prepare_namespace()
+        if self.start_time is None:
+            self.start_time = self.last_marked_time = time.time()
 
-        with self.sandbox():
+        # Generate the submission functions by executing into a prepared
+        # namespace.
+        code = submission.compile()
+        ns = self.prepare_namespace()
+        with self.sandbox(ns, submission):
             exec(code, ns)
 
         score = 0
         total_score = 0
         report = []
 
-        for mark, total_marks, feedback in (
+        # Run tests
+        for mark, total_marks, feedback, _ in (
             ex.run(ns) for ex in self.exercises
         ):
             score += mark
             total_score += total_marks
             report.append(feedback)
         submission.add_feedback("tests", "\n".join(report))
+
         lint_report = self.linter(submission)
         style_score = round(self.style_calc(lint_report) * self.style_marks)
         score += style_score
@@ -494,5 +549,18 @@ class MarkingScheme:
             f"Style score: {style_score} / {self.style_marks}",
         ]
         submission.add_feedback("style", "\n".join(style_feedback))
+
+        # Calculate scores
         submission.percentage = round(100 * score / total_score)
         submission.score = self.format_return(score, total_score)
+
+        # Timing statistics
+        finish_time = time.time()
+        elapsed = finish_time - self.last_marked_time
+        cum_time = finish_time - self.start_time
+        self.last_marked_time = finish_time
+        self.timing_stats.append((submission.reference, elapsed, cum_time))
+        logger.info(
+            f'Submission {submission.reference}, elapsed: {elapsed:5.5g}, '
+            f'total time: {cum_time:5.5g}'
+        )

@@ -1,5 +1,3 @@
-import abc
-import inspect
 import logging
 import types
 from collections import ChainMap
@@ -57,6 +55,24 @@ class DefaultGetterDescriptor(BaseDescriptor):
         return super().__set__(instance, None, typ)
 
 
+class StringFactoryDescriptor(SafeNoneDescriptor):
+    cast = list
+    factory = None
+
+    def __set__(self, instance, val, typ=None):
+        if isinstance(val, str) and self.factory is not None:
+            return super().__set__(instance, self.factory(val), typ)
+        super().__set__(instance, val, typ)
+
+
+def split_by_commas(self, string):
+    return [s.strip() for s in string.split(',')]
+
+
+class StringSplitDescriptor(StringFactoryDescriptor):
+    factory = split_by_commas
+
+
 def common(cast=None):
     typ = types.new_class("NewDescriptor", (DefaultGetterDescriptor,))
     typ.cast = cast
@@ -79,7 +95,8 @@ def method_marks(marks):
 
 
 _MAGIC = {
-    "args": ARGS, "kwargs": KWARGS, "marks": method_marks, "common": common
+    "args": ARGS, "kwargs": KWARGS, "marks": method_marks, "common": common,
+    "split_commas": StringSplitDescriptor,
 }
 
 

@@ -1,10 +1,11 @@
 """
 Utilities for the MarkingPy package.
 """
+import ast
 import logging
 from contextlib import contextmanager
 from functools import wraps
-from inspect import isfunction
+from inspect import isfunction, Signature, Parameter, stack
 from time import time
 
 try:
@@ -19,8 +20,67 @@ from .config import LOGGING_LEVELS
 
 logger = logging.getLogger(__name__)
 __all__ = [
-    'log_calls', 'build_style_calc', 'DEFAULT_STYLE_FORMULA', 'time_run'
+    'log_calls', 'build_style_calc', 'DEFAULT_STYLE_FORMULA', 'time_run',
+    'str_format_args', 'TestCaseFunction',
 ]
+
+POS_OR_KW = Parameter.POSITIONAL_OR_KEYWORD
+
+
+# noinspection PyPep8Naming
+class GetArgumentVisitor(ast.NodeVisitor):
+    _names = set()
+    _func_names = set()
+
+    def visit_Call(self, node):
+        self._func_names.add(node.func.id)
+        self.generic_visit(node)
+
+    def visit_Name(self, node):
+        self._names.add(node.id)
+        self.generic_visit(node)
+
+    def get_names(self):
+        names = self._names - self._func_names
+        self.reset()
+        return names
+
+    @classmethod
+    def reset(cls):
+        cls._names = set()
+        cls._func_names = set()
+
+
+class TestCaseFunction:
+    """
+    Simple function type accepting a single expression. Calls to the
+    resulting function returns the evaluated expression.
+
+    This is essentially a wrapper around a Python lambda expression.
+
+    :param expr: Expression to evaluate on call.
+    """
+
+    def __init__(self, expr):
+        self.expr = expr
+        self.code = compile(expr, '<expr>', 'eval')
+        visitor = GetArgumentVisitor()
+        visitor.visit(ast.parse(expr, '<expr>', 'eval'))
+        var_list = sorted(
+                visitor.get_names()
+                )
+        sig = Signature([Parameter(name, POS_OR_KW) for name in var_list])
+        self.__signature__ = sig
+
+    def __call__(self, *args, **kwargs):
+        locs = self.__signature__.bind(*args, **kwargs)
+        return eval(self.code, stack()[1][0].f_globals, locs.arguments)
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self.expr})'
+
+    def __str__(self):
+        return self.expr
 
 
 def log_calls(level=None):
@@ -36,16 +96,9 @@ def log_calls(level=None):
 
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # msg = "Call {}(".format(func.__name__) + ", ".join(map(repr, args))
-            #if args and kwargs:
-            #    msg += ", "
-            #msg += ", ".join(
-            #    "{}={}".format(k, repr(v)) for k, v in kwargs.items()
-            #)
-            #msg += ")"
             msg = (
                 f'Call {func.__name__}'
-                f'({", ".join(str(arg)[:5] for arg in args)})'
+                f'({str_format_args(args, kwargs)})'
             )
             logger.log(level, msg)
             return func(*args, **kwargs)
@@ -92,6 +145,21 @@ DEFAULT_STYLE_FORMULA = (
 default_style_calc = build_style_calc(DEFAULT_STYLE_FORMULA)
 
 
+def str_format_args(args, kwargs):
+    """
+    Format the args and kwargs of a function call.
+
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    args_msg = ', '.join(str(a) for a in args)
+    if kwargs:
+        args_msg += ', ' if args_msg else ''
+        args_msg += ', '.join(f'{k}={v}'
+                              for k, v in kwargs.items())
+    return args_msg
+
 def time_run(func, args, kwargs):
     """
     Time the running of a function.
@@ -102,12 +170,7 @@ def time_run(func, args, kwargs):
     :return:
     """
     start_time = time()
-    # noinspection PyBroadException
-    try:
-        func(*args, **kwargs)
-    except Exception:
-        return None
-
+    func(*args, **kwargs)
     runtime = time() - start_time
     logger.debug(f"Timed run {func.__name__}: {runtime}")
     return runtime
