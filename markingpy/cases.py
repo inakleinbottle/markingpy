@@ -1,5 +1,5 @@
 import logging
-import time
+import numbers
 
 from collections import namedtuple, abc
 from contextlib import redirect_stdout
@@ -162,18 +162,34 @@ class CallTest(BaseTest):
     Keyword arguments are forwarded to the underlying :class:`BaseTest`
     instance.
 
-    :param call_args:
-    :param call_kwargs:
+    :param call_args: Arguments to use.
+    :param call_kwargs: Keyword arguments to use.
+    :param expects_error: Exception(s) to expect on execution.
+
+        .. versionadded:: 0.2.0
+    :param tolerance: Tolerance to allow in numerical equality testing.
+        Defaults to None, which is inactive (equality must be exact).
+        This option cannot be used with non-numerical output.
+
+        .. versionadded:: 0.2.0
 
     """
     call_args: args
     call_kwargs: kwargs
 
-    def __init__(self, call_args, call_kwargs, *args, **kwargs):
+    def __init__(self, call_args, call_kwargs, *,
+                 expects_error=None, tolerance=None,
+                 **kwargs):
         self.call_args = call_args
         self.call_kwargs = call_kwargs
-        super().__init__(*args, **kwargs)
+        self.expects_error = expects_error
+        self.tolerance = tolerance
+        super().__init__(**kwargs)
         self.expected = self.get_expected()
+        if (tolerance is not None
+                and not isinstance(self.expected, numbers.Number)):
+            raise TypeError('Near matches are not available for non-numeric '
+                            'types')
 
     def get_expected(self):
         """
@@ -188,12 +204,31 @@ class CallTest(BaseTest):
     def create_test(self, other):
         return ExecutionContext()
 
+    def get_success(self, ctx, test_output):
+        if self.expects_error is not None:
+            err = ctx.error
+            if isinstance(err[1], self.expects_error):
+                return True
+            return False
+
+        if test_output == self.expected:
+            return True
+
+        if self.tolerance is None:
+            return False
+
+        if not isinstance(test_output, numbers.Number):
+            return False
+
+        diff = abs(test_output - self.expected)
+        return diff < self.tolerance
+
     def run(self, other):
         args_msg = str_format_args(self.call_args, self.call_kwargs)
         print(f'Testing with input: ({args_msg})')
         output = other(* self.call_args, ** self.call_kwargs)
         print(f'Expected: {self.expected}, got: {output}')
-        return output == self.expected
+        return output
 
 
 Call = namedtuple("Call", ("args", "kwargs"))

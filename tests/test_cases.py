@@ -60,11 +60,10 @@ def test_running_of_test_method(call_test_m):
     with ctx.catch():
         output = call_test_m.run(other)
     assert output is not None
-    assert not output
+    assert output == 'Other Run test'
     # test variables on executor
     assert ctx.error is None
     assert ctx.warnings == []
-    assert not ctx.stdout.getvalue()
     assert not ctx.stderr.getvalue()
 
 
@@ -82,7 +81,6 @@ def test_running_of_test_method_bad_function(call_test_m):
     # test variables on executor
     assert ctx.error[1] is exc
     assert ctx.warnings == []
-    assert not ctx.stdout.getvalue()
     assert not ctx.stderr.getvalue()
 
 
@@ -90,7 +88,7 @@ def test_call_test_run_with_print(call_test_m):
 
     def other(input):
         print(input)
-        return output
+        return input
 
     ctx = call_test_m.create_test(other)
     output = None
@@ -100,7 +98,6 @@ def test_call_test_run_with_print(call_test_m):
     # test variables on executor
     assert ctx.error is None
     assert ctx.warnings == []
-    assert ctx.stdout.getvalue() == "Run test\n"
     assert not ctx.stderr.getvalue()
 
 
@@ -169,7 +166,7 @@ def test_timing_test_running(timing_test_m):
 
 
 def test_timing_test_function_exception(timing_test_m):
-    exc = Exception("Test exception")
+    exc = cases.ExecutionFailedError("Test exception")
 
     def other(input):
         raise exc
@@ -181,7 +178,6 @@ def test_timing_test_function_exception(timing_test_m):
     assert output is None
     assert isinstance(ctx.error[1], cases.ExecutionFailedError)
     assert ctx.warnings == []
-    assert not ctx.stdout.getvalue()
     assert not ctx.stderr.getvalue()
 
 
