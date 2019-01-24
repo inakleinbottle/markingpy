@@ -11,7 +11,7 @@ from typing import Callable
 
 from .utils import log_calls, time_run, str_format_args
 from .execution import ExecutionContext
-from . import magic
+from .import magic
 
 logger = logging.getLogger(__name__)
 TestFeedback = namedtuple("TestFeedback", ("test", "mark", "feedback"))
@@ -134,22 +134,21 @@ class BaseTest(magic.MagicBase):
         marks = self.get_marks(context, test_output, success)
         msg = "Outcome: {}, Marks: {}"
         feedback = [str(self), msg.format(outcome, marks)]
-
         stdout = context.stdout.getvalue().strip()
         if stdout:
             feedback.append(self.format_stdout(stdout))
-
         err, warnings = context.error, context.warnings
         if err:
             feedback.append(self.format_error(err))
         if warnings:
             feedback.append(self.format_warnings(warnings))
-
         return TestFeedback(self, marks, "\n".join(feedback))
 
 
 class ExecutionFailedError(Exception):
     pass
+
+
 
 
 # noinspection PyUnresolvedReferences
@@ -179,28 +178,35 @@ class CallTest(BaseTest):
     call_args: args
     call_kwargs: kwargs
 
-    def __init__(self, call_args, call_kwargs, *,
-                 expects_error=None, tolerance=None,
-                 **kwargs):
+    def __init__(
+        self,
+        call_args,
+        call_kwargs,
+        *,
+        expects_error=None,
+        tolerance=None,
+        **kwargs,
+    ):
         self.call_args = call_args
         self.call_kwargs = call_kwargs
         self.expects_error = expects_error
         self.tolerance = tolerance
         super().__init__(**kwargs)
         self.expected = self.get_expected()
-        if (tolerance is not None
-                and not isinstance(self.expected, numbers.Number)):
-            raise TypeError('Near matches are not available for non-numeric '
-                            'types')
+        if (
+            tolerance is not None and
+            not isinstance(self.expected, numbers.Number)
+        ):
+            raise TypeError(
+                'Near matches are not available for non-numeric ' 'types'
+            )
 
     def get_expected(self):
         """
         Get the expected return to test
         :return:
         """
-        return self.exercise.func(
-            * self.call_args, ** self.call_kwargs
-            )
+        return self.exercise.func(* self.call_args, ** self.call_kwargs)
 
     def create_test(self, other):
         return ExecutionContext()
@@ -210,6 +216,7 @@ class CallTest(BaseTest):
             err = ctx.error
             if isinstance(err[1], self.expects_error):
                 return True
+
             return False
 
         if test_output == self.expected:
@@ -283,10 +290,9 @@ class TimingTest(BaseTest):
             raise ValueError("Cases not correctly defined.")
 
         logger.info(
-                'Adding timing test with cases:'
-                f'\n{", ".join(str(c) for c in cases)}\n)'
-                )
-
+            'Adding timing test with cases:'
+            f'\n{", ".join(str(c) for c in cases)}\n)'
+        )
         self.cases = cases
         self.tolerance = tolerance
 
@@ -302,12 +308,14 @@ class TimingTest(BaseTest):
             runtime = time_run(other, args, kwargs)
             if runtime is None:
                 raise ExecutionFailedError
-            print(f'Target time: {target:5.5g}, run time: {runtime:5.5g}')
 
+            print(f'Target time: {target:5.5g}, run time: {runtime:5.5g}')
             if not runtime <= (1.0 + self.tolerance) * target:
                 break
+
         else:
             return True
+
         return False
 
 
@@ -380,9 +388,9 @@ class MethodTest(CallTest):
         super().__init__(call_args, call_kwargs, **kwargs)
 
     def get_expected(self):
-        inst = self.exercise(*self.inst_args, **self.inst_kwargs)
+        inst = self.exercise(* self.inst_args, ** self.inst_kwargs)
         func = getattr(inst, self.method)
-        return func(*self.call_args, **self.call_kwargs)
+        return func(* self.call_args, ** self.call_kwargs)
 
     def run(self, other):
         instance = other(* self.inst_args, ** self.inst_kwargs)
@@ -411,7 +419,7 @@ class MethodTimingTest(TimingTest):
         super().__init__(cases, tolerance, **kwargs)
 
     def get_target(self, call: Call):
-        inst = self.exercise(*self.inst_args, **self.inst_kwargs)
+        inst = self.exercise(* self.inst_args, ** self.inst_kwargs)
         func = getattr(inst, self.method)
         return time_run(func, call.args, call.kwargs)
 
@@ -421,8 +429,9 @@ class MethodTimingTest(TimingTest):
         return super().run(func)
 
 
-SuccessCriterion = namedtuple('SuccessCriterion',
-                              ['name', 'descr', 'marks', 'criterion'])
+SuccessCriterion = namedtuple(
+    'SuccessCriterion', ['name', 'descr', 'marks', 'criterion']
+)
 
 
 class InteractionTest(BaseTest):
@@ -437,35 +446,55 @@ class InteractionTest(BaseTest):
         self.success_criteria = []
         super().__init__(**kwargs)
 
-    def create_proxy_ns(
-            self,
-            ns: typing.Dict[str, typing.Any]
-        ):
+    def create_proxy_ns(self, ns: typing.Dict[str, typing.Any]):
+        """
+        Create proxy class namespace for test
+        :param ns:
+        :return:
+        """
 
         def getter(self_, name):
             if name.startswith('_'):
                 raise AttributeError(
                     f'{self_.__class__.__name__} has no attribute {name}'
                 )
+
             return getattr(self.instance, name)
 
+        # noinspection PyUnusedLocal
         def setter(self_, name, val):
             if name.startswith('_'):
                 raise TypeError(f'Cannot set attribute {name}')
+
             return setattr(self.instance, name, val)
 
         ns['__getattr__'] = getter
         ns['__setattr__'] = setter
 
     def create_instance_proxy(self):
-        self.instance = self.cls(*self.inst_call.args,
-                                 **self.inst_call.kwargs)
-        proxy_cls = types.new_class('Proxy', (),
-                                    exec_body=self.create_proxy_ns)
+        """
+
+        :return:
+        """
+        self.instance = self.cls(
+            * self.inst_call.args, ** self.inst_call.kwargs
+        )
+        proxy_cls = types.new_class(
+            'Proxy', (), exec_body=self.create_proxy_ns
+        )
         return proxy_cls()
 
     def success_criterion(self, name=None, descr=None, marks=None):
+        """
+        Add new success criterion to this test.
 
+        Must decorate a function that takes the test instance as input
+        and returns either True (on success) or False (on failure).
+        :param name:
+        :param descr:
+        :param marks:
+        :return:
+        """
         if inspect.isfunction(name):
             fn = name
             name = None
@@ -478,18 +507,23 @@ class InteractionTest(BaseTest):
             )
             return func
 
-        if fn:
-            return deco(fn)
-        else:
+        if not fn:
             return deco
+
+        else:
+            return deco(fn)
 
     def create_test(self, other):
         return ExecutionContext()
 
     def get_success(self, ctx, test_output):
+        if test_output is None:
+            return False
         crt = self.success_criteria
-        return (ctx.ran_successfully
-                and all(c.criterion(test_output) for c in crt))
+        return (
+            ctx.ran_successfully and all(c.criterion(test_output) for c in crt)
+        )
 
     def run(self, other):
-        return other(self.create_instance_proxy())
+        other(self.create_instance_proxy())
+        return self.instance

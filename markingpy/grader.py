@@ -54,11 +54,12 @@ class Grader:
             except Exception:
                 type_, val, tb = sys.exc_info()
                 print(
-                        f'Error marking {submission.reference}\n'
-                        f'{type_.__name__}: {val}'
-                        )
+                    f'Error marking {submission.reference}\n'
+                    f'{type_.__name__}: {val}'
+                )
                 traceback.print_tb(tb)
                 continue
+
 
     # context manager
     def __enter__(self):
@@ -66,6 +67,5 @@ class Grader:
         return self
 
     def __exit__(self, err_type, err_val, tb):
-
         for fn in self.at_exit:
             fn()

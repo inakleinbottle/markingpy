@@ -32,11 +32,12 @@ class DirectoryFinder(BaseFinder):
     def get_file_list(self):
         try:
             return [
-                    file
-                    for file in self.path.iterdir()
-                    if file.is_file()
-                    if file.name.endswith(".py")
-                    ]
+                file
+                for file in self.path.iterdir()
+                if file.is_file()
+                if file.name.endswith(".py")
+            ]
+
         except AttributeError:
             return None
 
@@ -44,6 +45,7 @@ class DirectoryFinder(BaseFinder):
         file_list = self.get_file_list()
         if file_list is None:
             raise RuntimeError('No submissions found')
+
         for file in file_list:
             ref = file.name[:-3]
             source = file.read_text()

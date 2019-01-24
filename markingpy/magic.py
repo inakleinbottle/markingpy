@@ -62,6 +62,7 @@ class StringFactoryDescriptor(SafeNoneDescriptor):
     def __set__(self, instance, val, typ=None):
         if isinstance(val, str) and self.factory is not None:
             return super().__set__(instance, self.factory(val), typ)
+
         super().__set__(instance, val, typ)
 
 
@@ -95,7 +96,10 @@ def method_marks(marks):
 
 
 _MAGIC = {
-    "args": ARGS, "kwargs": KWARGS, "marks": method_marks, "common": common,
+    "args": ARGS,
+    "kwargs": KWARGS,
+    "marks": method_marks,
+    "common": common,
     "split_commas": StringSplitDescriptor,
 }
 

@@ -8,7 +8,10 @@ import sys
 import time
 import warnings
 
-from builtins import __import__, exec as b_exec, eval as b_eval
+from builtins import (__import__,
+                      exec as b_exec,
+                      eval as b_eval
+                      )
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
@@ -33,6 +36,7 @@ __all__ = [
     'mark_scheme',
     'get_markscheme',
     'set_markscheme',
+    'import_markscheme'
 ]
 
 _MARKSCHEME = None
@@ -504,6 +508,7 @@ class MarkingScheme(magic.MagicBase):
         ns['__builtins__']['eval'] = c_eval
         ns['__builtins__']['exec'] = c_exec
 
+        # noinspection PyTypeChecker
         ns['sys'] = WrappedModule(sys)
         for mod in self.preload_modules:
             ns[mod] = WrappedModule(importlib.import_module(mod))

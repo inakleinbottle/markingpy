@@ -20,10 +20,13 @@ from .config import LOGGING_LEVELS
 
 logger = logging.getLogger(__name__)
 __all__ = [
-    'log_calls', 'build_style_calc', 'DEFAULT_STYLE_FORMULA', 'time_run',
-    'str_format_args', 'TestCaseFunction',
+    'log_calls',
+    'build_style_calc',
+    'DEFAULT_STYLE_FORMULA',
+    'time_run',
+    'str_format_args',
+    'TestCaseFunction',
 ]
-
 POS_OR_KW = Parameter.POSITIONAL_OR_KEYWORD
 
 
@@ -66,9 +69,7 @@ class TestCaseFunction:
         self.code = compile(expr, '<expr>', 'eval')
         visitor = GetArgumentVisitor()
         visitor.visit(ast.parse(expr, '<expr>', 'eval'))
-        var_list = sorted(
-                visitor.get_names()
-                )
+        var_list = sorted(visitor.get_names())
         sig = Signature([Parameter(name, POS_OR_KW) for name in var_list])
         self.__signature__ = sig
 
@@ -97,8 +98,7 @@ def log_calls(level=None):
         @wraps(func)
         def wrapper(*args, **kwargs):
             msg = (
-                f'Call {func.__name__}'
-                f'({str_format_args(args, kwargs)})'
+                f'Call {func.__name__}' f'({str_format_args(args, kwargs)})'
             )
             logger.log(level, msg)
             return func(*args, **kwargs)
@@ -156,9 +156,9 @@ def str_format_args(args, kwargs):
     args_msg = ', '.join(str(a) for a in args)
     if kwargs:
         args_msg += ', ' if args_msg else ''
-        args_msg += ', '.join(f'{k}={v}'
-                              for k, v in kwargs.items())
+        args_msg += ', '.join(f'{k}={v}' for k, v in kwargs.items())
     return args_msg
+
 
 def time_run(func, args, kwargs):
     """
