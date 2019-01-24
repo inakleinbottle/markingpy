@@ -5,6 +5,8 @@ Helper module to compile files that might contain syntax errors.
 from codeop import PyCF_DONT_IMPLY_DEDENT
 from collections import namedtuple, deque
 
+from typing import Type, Tuple, Any
+
 __all__ = ['Chunk', 'RemovedChunk', 'Compiler', 'Reason']
 # Chunk = namedtuple('Chunk', ('line_start', 'line_end', 'content'))
 Reason = namedtuple("Reason", ("removed_at", "exc"))
@@ -13,7 +15,7 @@ Reason = namedtuple("Reason", ("removed_at", "exc"))
 class Chunk:
     __slots__ = ["line_start", "line_end", "content"]
 
-    def __init__(self, line_start, line_end, content):
+    def __init__(self, line_start: int, line_end: int, content: str):
         self.line_start = line_start
         self.line_end = line_end
         self.content = content
@@ -21,7 +23,7 @@ class Chunk:
     def __iter__(self):
         yield from (self.line_start, self.line_end, self.content)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             self.__class__.__name__ +
             "(" +
@@ -35,23 +37,23 @@ class Chunk:
 class RemovedChunk(Chunk):
     __slots__ = ["line_start", "line_end", "content", "reasons"]
 
-    def __init__(self, line_start, line_end, content):
+    def __init__(self, line_start: int, line_end: int, content: str):
         super().__init__(line_start, line_end, content)
         self.reasons = []
 
-    def is_adjacent(self, other):
+    def is_adjacent(self, other: Type[Chunk]) -> bool:
         return (
             abs(other.line_end - self.line_start) <= 1 or
             abs(other.line_start - self.line_end) <= 1
         )
 
-    def add_reason(self, *reason):
+    def add_reason(self, *reason: Reason):
         rm_list = [r.removed_at for r in self.reasons]
         for r in reason:
             if not r.removed_at in rm_list:
                 self.reasons.append(r)
 
-    def join(self, other):
+    def join(self, other: Type[Chunk]) -> Chunk:
         if self.line_start > other.line_end:
             # other first
             content = "\n".join([other.content, self.content])
@@ -66,7 +68,7 @@ class RemovedChunk(Chunk):
         new_removed.add_reason(* self.reasons, * other.reasons)
         return new_removed
 
-    def get_first_error(self):
+    def get_first_error(self) -> Reason:
         return min(self.reasons, key= lambda r: r.removed_at)
 
 
@@ -83,7 +85,7 @@ class Compiler:
         
     """
 
-    def __init__(self, filename="<input>", mode="exec"):
+    def __init__(self, filename: str="<input>", mode:str ="exec"):
         """
         Constructor.
         """
@@ -96,19 +98,21 @@ class Compiler:
 
     def __call__(
         self,
-        source,
+        source: str,
         *,
-        filename="<input>",
-        mode="exec",
-        flags=0,
-        dont_inherit=False,
-        optimize= -1,
+        filename: str="<input>",
+        mode: str="exec",
+        flags: int=0,
+        dont_inherit: bool=False,
+        optimize: int= -1,
     ):
         return self.compile_source(
             source, filename, mode, flags, dont_inherit, optimize
         )
 
-    def remove_line(self, chunk, lineno, reason):
+    def remove_line(
+            self, chunk:Chunk, lineno: int, reason: Reason
+            ) -> Tuple[Chunk, Chunk]:
         """
         Remove a line from the source.
         """
@@ -137,7 +141,7 @@ class Compiler:
             Chunk(reason.lineno, chunk.line_end, "\n".join(lines[lineno:])),
         )
 
-    def try_compile(self, chunk):
+    def try_compile(self, chunk: Chunk):
         """
         Try compiling a chunk.
         """
@@ -154,7 +158,7 @@ class Compiler:
         except SyntaxError as err:
             self.handle_compile_exception(err, chunk)
 
-    def handle_compile_exception(self, err, chunk):
+    def handle_compile_exception(self, err: Type[Exception], chunk: Chunk):
         """
         Handle an exception raised during compilation.
         """
@@ -166,8 +170,9 @@ class Compiler:
             self.to_process.append(after)
 
     def compile_source(
-        self, source, filename, mode, flags, dont_inherit, optimize
-    ):
+        self, source:str , filename: str, mode: str, flags: int,
+            dont_inherit: bool, optimize: int
+    ) -> Any:
         """
         Compile the source ignoring any compilation errors.
 

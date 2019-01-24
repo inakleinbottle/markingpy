@@ -33,4 +33,4 @@ def mock_grader(monkeypatch):
 
 def test_grader(mock_grader):
     mock_grader.grade_submissions()
-    mock_grader.markscheme.run.assert_called()
+    mock_grader.mark_scheme.run.assert_called()

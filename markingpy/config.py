@@ -15,7 +15,7 @@ LOGGING_LEVELS = {
 }
 
 
-def load_config():
+def load_config() -> ConfigParser:
     """
     Configuration file loader for markingpy.
     """

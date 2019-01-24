@@ -2,16 +2,24 @@
 Exercise building utilities.
 """
 import logging
-import typing
 import weakref
 from collections import namedtuple
 from functools import wraps
 from contextlib import contextmanager
 from inspect import isfunction, isclass
+from typing import (List, Union, Dict, Any, Type, Callable, Optional, Tuple,
+                    Iterable, TYPE_CHECKING)
+
+if TYPE_CHECKING:
+    from . import markscheme
 
 from .cases import Test, TimingTest, CallTest, Call
 from .utils import log_calls
 from .import cases
+
+ARGS = Tuple[Any, ...]
+KWARGS = Dict[str, Any]
+
 
 logger = logging.getLogger(__name__)
 INDENT = " " * 4
@@ -43,11 +51,12 @@ class ExerciseBase:
             self._marking_scheme.add_exercise(self)
 
     @staticmethod
-    def get_all_exercises() -> typing.List:
+    def get_all_exercises() -> List['ExerciseBase']:
         return [r for r in _EXERCISES]
 
     @classmethod
-    def set_marking_scheme(cls, marking_scheme):
+    def set_marking_scheme(
+            cls, marking_scheme: 'markscheme.MarkingScheme'):
         if not NO_ADD_EXERCISES:
             cls._marking_scheme = marking_scheme
 
@@ -64,7 +73,7 @@ ExerciseFeedback = namedtuple(
 )
 
 
-def record_call(*args: typing.Any, **kwargs: typing.Any) -> Call:
+def record_call(*args: Any, **kwargs: Any) -> Call:
     """
     Record the arguments of a function call.
 
@@ -96,8 +105,12 @@ class Exercise(ExerciseBase):
     """
 
     def __init__(
-        self, function_or_class, name=None, descr=None, marks=None,
-            submission_name=None, **args
+        self, function_or_class: Union[Callable, Type],
+            name: Optional[str]=None,
+            descr: Optional[str]=None,
+            marks: Optional[int]=None,
+            submission_name: Optional[str]=None,
+            **args: Any
     ):
         super().__init__()
         self.number = self.get_number()
@@ -169,7 +182,7 @@ class Exercise(ExerciseBase):
     def get_name(self) -> str:
         return f"Exercise {self.number}: {self.func.__name__}"
 
-    def __call__(self, *args, **kwargs) -> typing.Any:
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """
         Call the exercise function or submission function.
 
@@ -181,8 +194,7 @@ class Exercise(ExerciseBase):
 
     @contextmanager
     def set_to_submission(self,
-                          submission_func: typing.Union[typing.Callable,
-                                                        typing.Type]
+                          submission_func: Union[Callable, Type]
                           ):
         """
         Set the execution function to the submission function or class
@@ -200,10 +212,10 @@ class Exercise(ExerciseBase):
         return sum(t.marks for t in self.tests)
 
     def add_test(self, *args,
-                 name:typing.Optional[str]=None,
-                 cls: typing.Type[Test]=None,
-                 **params: typing.Any
-                 ) -> Test:
+                 name: Optional[str]=None,
+                 cls: Type[cases.BaseTest]=None,
+                 **params: Any
+                 ) -> cases.BaseTest:
         """
         Add a new test to the exercise.
 
@@ -223,7 +235,10 @@ class Exercise(ExerciseBase):
         return test
 
     @log_calls("info")
-    def test(self, name=None, cls=None, **kwargs) -> Test:
+    def test(self, name: Optional[str]=None,
+             cls: Optional[Type[cases.BaseTest]]=None,
+             **kwargs: Any
+             ) -> cases.BaseTest:
         """
         Add a new test to the exercise by decorating a function. The function
         should return `True` for a successful test and `False` for a failed
@@ -253,11 +268,11 @@ class Exercise(ExerciseBase):
             return decorator(name)
 
     def get_submission_function(self,
-                                namespace: typing.Dict[str, typing.Any]
-                                ) -> typing.Union[typing.Callable, typing.Type]:
+                                namespace: Dict[str, Any]
+                                ) -> Union[Callable, Type]:
         return namespace.get(self.submission_name, None)
 
-    def format_feedback(self, results) -> ExerciseFeedback:
+    def format_feedback(self, results: Any) -> ExerciseFeedback:
         if not results:
             msg = (
                 f"Function {self.submission_name} was not found in "
@@ -275,7 +290,7 @@ class Exercise(ExerciseBase):
             score, self.total_marks, "\n".join(feedback), results
         )
 
-    def run(self, namespace) -> ExerciseFeedback:
+    def run(self, namespace: Dict[str, Any]) -> ExerciseFeedback:
         """
         Run the test suite on submission.
 
@@ -292,12 +307,13 @@ class Exercise(ExerciseBase):
 
 class ExerciseFunctionProxy:
 
-    def add_test(self, *args, **kwargs):
+    def add_test(self, *args: Any, **kwargs: Any) -> cases.BaseTest:
         raise NotImplementedError
 
     @log_calls("info")
-    def add_test_call(self, call_params=None, call_kwparams=None, **kwargs) \
-            -> Test:
+    def add_test_call(self, call_params: ARGS=None, call_kwparams: KWARGS=None,
+                      **kwargs: Any
+                      ) -> cases.BaseTest:
         """
         Add a call test to the exercise.
 
@@ -314,7 +330,11 @@ class ExerciseFunctionProxy:
         )
 
     @log_calls("info")
-    def timing_test(self, timing_cases, tolerance=0.2, **kwargs) -> Test:
+    def timing_test(self,
+                    timing_cases: Union[Dict[Call, float], Iterable[Call]],
+                    tolerance: float=0.2,
+                    **kwargs: Any
+                    ) -> cases.BaseTest:
         """
         Test the timing of a submission against the model solution.
 
@@ -341,16 +361,50 @@ class FunctionExercise(Exercise, ExerciseFunctionProxy):
     set_function = Exercise.set_to_submission
 
 
+
+# noinspection PyProtectedMember
+class ExerciseInstance:
+
+    def __init__(self,
+                 parent: 'ClassExercise',
+                 cls: Type,
+                 *args: Any,
+                 **kwargs: Any
+                 ):
+        self.__call_args = Call(args, kwargs)
+        self.__parent = parent
+        self.__cls = cls
+
+    def __getattr__(self, item: str) -> Any:
+        if not hasattr(self.__cls, item):
+            raise AttributeError(
+                f"{self.__cls} does not have attribute {item}"
+            )
+
+        cls_attr = getattr(self.__cls, item)
+        if isfunction(cls_attr):
+            return ExerciseMethodProxy(
+                self.__cls, self.__parent, self.__call_args, item
+            )
+
 class ExerciseMethodProxy(ExerciseFunctionProxy):
 
-    def __init__(self, cls, parent, inst_call, name):
+    def __init__(self,
+                 cls: Type,
+                 parent: 'ClassExercise',
+                 inst_call: Call,
+                 name: str):
         wraps(getattr(cls, name))(self)
         self.name = name
         self.parent = parent
         self.cls = cls
         self.inst_call = inst_call
 
-    def add_test(self, *args, cls=None, **kwargs):
+    def add_test(self,
+                 *args: Any,
+                 cls: Optional[Type]=None,
+                 **kwargs: Any
+                 ) -> cases.BaseTest:
         if cls is cases.CallTest:
             return self.parent.method_test_call(
                 self.name,
@@ -374,25 +428,7 @@ class ExerciseMethodProxy(ExerciseFunctionProxy):
 
 
 
-# noinspection PyProtectedMember
-class ExerciseInstance:
 
-    def __init__(self, parent, cls, *args, **kwargs):
-        self.__call_args = Call(args, kwargs)
-        self.__parent = parent
-        self.__cls = cls
-
-    def __getattr__(self, item):
-        if not hasattr(self.__cls, item):
-            raise AttributeError(
-                f"{self.__cls} does not have attribute {item}"
-            )
-
-        cls_attr = getattr(self.__cls, item)
-        if isfunction(cls_attr):
-            return ExerciseMethodProxy(
-                self.__cls, self.__parent, self.__call_args, item
-            )
 
 
 class ClassExercise(Exercise):
@@ -420,7 +456,7 @@ class ClassExercise(Exercise):
     .. versionadded:: 0.2.0
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
 
         def wrapper(*iargs, **ikwargs):
@@ -431,13 +467,13 @@ class ClassExercise(Exercise):
     @log_calls("info")
     def method_test_call(
         self,
-        method,
-        call_params=None,
-        call_kwparams=None,
-        inst_with_args=None,
-        inst_with_kwargs=None,
-        **kwargs,
-    ) -> Test:
+        method: str,
+        call_params: Optional[ARGS]=None,
+        call_kwparams: Optional[KWARGS]=None,
+        inst_with_args: Optional[ARGS]=None,
+        inst_with_kwargs: Optional[KWARGS]=None,
+        **kwargs: Any,
+    ) -> cases.MethodTest:
         """
         Test the call of a method on the exercise class. This will create a new
         instance with the provided arguments, and then run the named method with
@@ -467,12 +503,12 @@ class ClassExercise(Exercise):
 
     def method_timing_test(
         self,
-        timing_cases,
-        tolerance=0.2,
-        inst_with_args=None,
-        inst_with_kwargs=None,
-        **kwargs,
-    ) -> Test:
+        timing_cases: Union[Dict[Call, float], Iterable[Call]],
+        tolerance: float=0.2,
+        inst_with_args: Optional[ARGS]=None,
+        inst_with_kwargs: Optional[KWARGS]=None,
+        **kwargs: Any,
+    ) -> cases.MethodTimingTest:
         return self.add_test(
             timing_cases,
             tolerance,
@@ -507,12 +543,13 @@ class InteractionExercise(Exercise):
     .. versionadded:: 0.2.0
     """
 
-    def __init__(self, environment, **kwargs):
+    def __init__(self, environment: Type, **kwargs: Any):
         super().__init__(environment, **kwargs)
-        self.primary_criteria = []
-        self.secondary_criteria = []
 
-    def new_test(self, instantiation_call, **kwargs):
+    def new_test(self,
+                 instantiation_call: Call,
+                 **kwargs: Any
+                 ) -> cases.InteractionTest:
         """
         Create a new test.
 
@@ -526,10 +563,10 @@ class InteractionExercise(Exercise):
 
 
 def exercise(
-        name: typing.Optional[str]=None,
-        cls: typing.Type[Exercise]=None,
+        name: Optional[str]=None,
+        cls: Type[Exercise]=None,
         interactive: bool=False,
-        **args: typing.Any
+        **args: Any
         ) -> Exercise:
     """
     Create a new exercise using this function or class as the model solution.

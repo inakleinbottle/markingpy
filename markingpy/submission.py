@@ -1,6 +1,11 @@
 import os
 import logging
 from collections import namedtuple
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from types import CodeType
+
 
 from .compiler import Compiler
 from .utils import log_calls
@@ -11,9 +16,14 @@ Scores = namedtuple("Scores", ["raw", "total", "percentage", "formatted"])
 __all__ = ['Submission']
 
 
+
+
 class Submission:
 
-    def __init__(self, reference, source, **kwargs):
+    def __init__(self,
+                 reference: str,
+                 source: str,
+                 **kwargs: Any):
         self.reference = reference
         self.compiler = Compiler()
         self.source = self.raw_source = source
@@ -23,7 +33,7 @@ class Submission:
         self.feedback = {}
 
     @log_calls
-    def compile(self):
+    def compile(self) -> 'CodeType':
         """
         Compile the submission source code.
         """
@@ -45,13 +55,13 @@ class Submission:
         return self.code
 
     @log_calls
-    def add_feedback(self, item, feedback):
+    def add_feedback(self, item: str, feedback: str):
         """
         Add feedback to the submission.
         """
         self.feedback[item] = feedback
 
-    def generate_report(self):
+    def generate_report(self) -> str:
         """
         Generate report for this submission.
         """

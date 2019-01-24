@@ -6,10 +6,14 @@ import inspect
 from collections import namedtuple, abc
 from contextlib import redirect_stdout
 from io import StringIO
-from typing import Callable
+from typing import (Callable, Union, Optional, Type, Any, Tuple, Dict, List,
+    Iterable)
+
+ARGS = Tuple[Any, ...]
+KWARGS = Dict[str, Any]
 
 
-from .utils import log_calls, time_run, str_format_args
+from .utils import time_run, str_format_args
 from .execution import ExecutionContext
 from .import magic
 
@@ -45,10 +49,10 @@ class BaseTest(magic.MagicBase):
 
     def __init__(self,
                  *,
-                 name: typing.optional[str]=None,
-                 descr: typing.Optional[str]=None,
+                 name: Optional[str]=None,
+                 descr: Optional[str]=None,
                  marks: int=0,
-                 exercise: typing.Optional[Exercise]=None):
+                 exercise: Optional=None):
         self.exercise = exercise
         self.name = name
         self.descr = descr
@@ -64,7 +68,7 @@ class BaseTest(magic.MagicBase):
         return rv
 
     def __call__(self,
-                 other: typing.Union[typing.Callable, typing.Type]
+                 other: typing.Union[Callable, Type]
                  ) -> TestFeedback:
         """
         Run the test.
@@ -85,7 +89,7 @@ class BaseTest(magic.MagicBase):
             test_output = self.run(wrapped)
         return self.format_feedback(ctx, test_output)
 
-    def create_test(self, other):
+    def create_test(self, other: Union[Callable, Type]) -> ExecutionContext:
         """
         Create the execution context  for this test.
 
@@ -94,13 +98,13 @@ class BaseTest(magic.MagicBase):
         """
         raise NotImplementedError
 
-    def run(self, other):
+    def run(self, other: Union[Callable, Type]):
         """
         Run the test.
         """
         raise NotImplementedError
 
-    def get_success(self, ctx: ExecutionContext, test_output: typing.Any):
+    def get_success(self, ctx: ExecutionContext, test_output: Any) -> bool:
         """
         Examine result and determine whether a test was successful.
 
@@ -112,21 +116,19 @@ class BaseTest(magic.MagicBase):
 
     def get_marks(self,
                   ctx: ExecutionContext,
-                  test_output: typing.Any,
+                  test_output: Any,
                   success: bool
                   ) -> int:
         return self.marks if success else 0
 
     def format_error(self,
-                     err: typing.Tuple[typing.Type,
-                                       Exception,
-                                       typing.Any]
+                     err: Tuple[Type[Exception], Exception, Any]
                      ) -> str:
         return "\n.".join(
             self.indent + line for line in str(err[1]).splitlines()
         )
 
-    def format_warnings(self, warnings: typing.List[Warning]) -> str:
+    def format_warnings(self, warnings: List[Warning]) -> str:
         return "\n".join(
             self.indent + line.strip()
             for warning in warnings
@@ -138,7 +140,7 @@ class BaseTest(magic.MagicBase):
 
     def format_feedback(self,
                         context: ExecutionContext,
-                        test_output: typing.Any
+                        test_output: Any
                         ) -> TestFeedback:
         """
         Collect information and format feedback.
@@ -198,14 +200,14 @@ class CallTest(BaseTest):
 
     def __init__(
         self,
-        call_args: typing.Optional[typing.Tuple[typing.Any]],
-        call_kwargs: typing.Optional[typing.Dict[str, typing.Any]],
+        call_args: Optional[ARGS],
+        call_kwargs: Optional[KWARGS],
         *,
-        expects_error: typing.Union[typing.Tuple[typing.Type[Exception]],
-                                    typing.Type[Exception],
-                                    None]=None,
-        tolerance: typing.Optional[float]=None,
-        **kwargs: typing.Any,
+        expects_error: Union[Tuple[Type[Exception]],
+                             Type[Exception],
+                             None]=None,
+        tolerance: Optional[float]=None,
+        **kwargs: Any,
     ):
         self.call_args = call_args
         self.call_kwargs = call_kwargs
@@ -228,12 +230,12 @@ class CallTest(BaseTest):
         """
         return self.exercise.func(* self.call_args, ** self.call_kwargs)
 
-    def create_test(self, other: typing.Callable) -> ExecutionContext:
+    def create_test(self, other: Callable) -> ExecutionContext:
         return ExecutionContext()
 
     def get_success(self,
                     ctx: ExecutionContext,
-                    test_output: typing.Any
+                    test_output: Any
                     ) -> int:
         if self.expects_error is not None:
             err = ctx.error
@@ -254,7 +256,7 @@ class CallTest(BaseTest):
         diff = abs(test_output - self.expected)
         return diff < self.tolerance
 
-    def run(self, other: typing.Callable) -> typing.Any:
+    def run(self, other: Callable) -> Any:
         args_msg = str_format_args(self.call_args, self.call_kwargs)
         print(f'Testing with input: ({args_msg})')
         output = other(* self.call_args, ** self.call_kwargs)
@@ -289,7 +291,10 @@ class TimingTest(BaseTest):
             real_target = (1.0 + tolerance) * target
     """
 
-    def __init__(self, cases, tolerance, **kwargs):
+    def __init__(self,
+                 cases: Union[Dict[Call, float], Iterable[Call]],
+                 tolerance: float,
+                 **kwargs: Any):
         super().__init__(**kwargs)
         if isinstance(cases, dict):
             # cases from dict - preset targets
@@ -319,13 +324,13 @@ class TimingTest(BaseTest):
         self.cases = cases
         self.tolerance = tolerance
 
-    def create_test(self, other):
+    def create_test(self, other: Callable):
         return ExecutionContext()
 
     def get_target(self, call: Call):
         return time_run(self.exercise.func, call.args, call.kwargs)
 
-    def run(self, other):
+    def run(self, other: Callable):
         for args, kwargs, target in self.cases:
             print(f'Running: ({str_format_args(args, kwargs)})')
             runtime = time_run(other, args, kwargs)
@@ -368,19 +373,22 @@ class Test(BaseTest):
     :param test_func: Testing function.
     """
 
-    def __init__(self, test_func: Callable[..., bool], *args, **kwargs):
+    def __init__(self,
+                 test_func: Callable[..., bool],
+                 *args: Any,
+                 **kwargs: Any):
         self.test_func = test_func
         super().__init__(*args, **kwargs)
 
-    def get_name(self):
+    def get_name(self) -> str:
         return self.test_func.__name__
 
-    def create_test(self, other):
+    def create_test(self, other: Callable) -> ExecutionContext:
         ctx = ExecutionContext()
         ctx.add_context(self.exercise.set_function(other))
         return ctx
 
-    def run(self, other):
+    def run(self, other: Callable):
         return self.test_func()
 
 
@@ -399,10 +407,10 @@ class MethodTest(CallTest):
     def __init__(
         self,
         method,
-        call_args=None,
-        call_kwargs=None,
-        inst_args=None,
-        inst_kwargs=None,
+        call_args: ARGS=None,
+        call_kwargs: KWARGS=None,
+        inst_args: ARGS=None,
+        inst_kwargs: KWARGS=None,
         **kwargs,
     ):
         self.method = method
@@ -415,7 +423,7 @@ class MethodTest(CallTest):
         func = getattr(inst, self.method)
         return func(* self.call_args, ** self.call_kwargs)
 
-    def run(self, other):
+    def run(self, other: Type):
         instance = other(* self.inst_args, ** self.inst_kwargs)
         func = getattr(instance, self.method)
         return super().run(func)
@@ -434,19 +442,25 @@ class MethodTimingTest(TimingTest):
     inst_kwargs: kwargs
 
     def __init__(
-        self, method, cases, tolerance, inst_args, inst_kwargs, **kwargs
+        self,
+        method: str,
+        cases: Union[Dict[Call, float], Iterable[Call]],
+        tolerance: float,
+        inst_args: ARGS,
+        inst_kwargs: KWARGS,
+        **kwargs: Any
     ):
         self.method = method
         self.inst_args = inst_args
         self.inst_kwargs = inst_kwargs
         super().__init__(cases, tolerance, **kwargs)
 
-    def get_target(self, call: Call):
+    def get_target(self, call: Call) -> float:
         inst = self.exercise(* self.inst_args, ** self.inst_kwargs)
         func = getattr(inst, self.method)
         return time_run(func, call.args, call.kwargs)
 
-    def run(self, other):
+    def run(self, other: Callable):
         instance = other(* self.inst_args, ** self.inst_kwargs)
         func = getattr(instance, self.method)
         return super().run(func)
@@ -462,7 +476,7 @@ class InteractionTest(BaseTest):
     Test interaction with some object.
     """
 
-    def __init__(self, cls, inst_call, **kwargs):
+    def __init__(self, cls: Type, inst_call: Call, **kwargs: Any):
         self.cls = cls
         self.inst_call = inst_call
         self.instance = None
@@ -473,7 +487,6 @@ class InteractionTest(BaseTest):
         """
         Create proxy class namespace for test
         :param ns:
-        :return:
         """
 
         def getter(self_, name):
@@ -494,7 +507,7 @@ class InteractionTest(BaseTest):
         ns['__getattr__'] = getter
         ns['__setattr__'] = setter
 
-    def create_instance_proxy(self):
+    def create_instance_proxy(self) -> Type:
         """
 
         :return:
@@ -507,16 +520,21 @@ class InteractionTest(BaseTest):
         )
         return proxy_cls()
 
-    def success_criterion(self, name=None, descr=None, marks=None):
+    def success_criterion(self,
+                          name: Optional[str]=None,
+                          descr: Optional[str]=None,
+                          marks: Optional[int]=None
+                          ) -> Callable:
         """
         Add new success criterion to this test.
 
         Must decorate a function that takes the test instance as input
         and returns either True (on success) or False (on failure).
+
         :param name:
         :param descr:
         :param marks:
-        :return:
+
         """
         if inspect.isfunction(name):
             fn = name
@@ -536,10 +554,10 @@ class InteractionTest(BaseTest):
         else:
             return deco(fn)
 
-    def create_test(self, other):
+    def create_test(self, other: Callable) -> ExecutionContext:
         return ExecutionContext()
 
-    def get_success(self, ctx, test_output):
+    def get_success(self, ctx: ExecutionContext, test_output: Any) -> bool:
         if test_output is None:
             return False
         crt = self.success_criteria
@@ -547,6 +565,6 @@ class InteractionTest(BaseTest):
             ctx.ran_successfully and all(c.criterion(test_output) for c in crt)
         )
 
-    def run(self, other):
+    def run(self, other: Callable) -> Type:
         other(self.create_instance_proxy())
         return self.instance

@@ -9,6 +9,13 @@ from functools import wraps
 from inspect import isfunction, Signature, Parameter, stack
 from time import time
 
+from typing import Any, Set, Callable, Dict, Tuple, ContextManager
+
+ARGS = Tuple[Any, ...]
+KWARGS = Dict[str, Any]
+
+
+
 try:
     import resource
 except ImportError:
@@ -36,15 +43,15 @@ class GetArgumentVisitor(ast.NodeVisitor):
     _names = set()
     _func_names = set()
 
-    def visit_Call(self, node):
+    def visit_Call(self, node: ast.AST):
         self._func_names.add(node.func.id)
         self.generic_visit(node)
 
-    def visit_Name(self, node):
+    def visit_Name(self, node: ast.AST):
         self._names.add(node.id)
         self.generic_visit(node)
 
-    def get_names(self):
+    def get_names(self) -> Set[str]:
         names = self._names - self._func_names
         self.reset()
         return names
@@ -74,18 +81,18 @@ class TestCaseFunction:
         sig = Signature([Parameter(name, POS_OR_KW) for name in var_list])
         self.__signature__ = sig
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
         locs = self.__signature__.bind(*args, **kwargs)
         return eval(self.code, stack()[1][0].f_globals, locs.arguments)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'{self.__class__.__name__}({self.expr})'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.expr
 
 
-def log_calls(level: str=None):
+def log_calls(level: str=None) -> Callable:
     if isfunction(level):
         fn = level
         level = logging.DEBUG
@@ -163,9 +170,9 @@ def str_format_args(args: typing.Tuple, kwargs: typing.Dict) -> str:
 
 
 def time_run(
-        func: typing.Callable,
-        args: typing.Tuple[typing.Any],
-        kwargs: typing.Dict[str, typing.Any]
+        func: Callable,
+        args: ARGS,
+        kwargs: KWARGS
         ) -> float:
     """
     Time the running of a function.
@@ -186,7 +193,7 @@ if resource is not None and signal is not None:
     __all__.append('cpu_linit')
 
     @contextmanager
-    def cpu_limit(limit):
+    def cpu_limit(limit) -> ContextManager:
         """
         Context manager, limits the CPU time of a set of commands.
 

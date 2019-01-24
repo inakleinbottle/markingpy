@@ -5,10 +5,13 @@ Submission finder tools.
 from abc import ABC, abstractmethod
 import sqlite3
 from pathlib import Path
+from typing import Union, List, Generator, Optional, Any
 
 from .import submission
 
 __all__ = ["BaseFinder", "DirectoryFinder", "SQLiteFinder", "NullFinder"]
+
+SUB_GENERATOR = Generator[submission.Submission, None, None]
 
 
 class BaseFinder(ABC):
@@ -23,13 +26,13 @@ class DirectoryFinder(BaseFinder):
     Load submissions from a directory.
     """
 
-    def __init__(self, path):
+    def __init__(self, path: Union[str, Path]):
         path = self.path = Path(path)
         if path.exists() and not path.is_dir():
             print(path)
             raise NotADirectoryError("Expected a directory")
 
-    def get_file_list(self):
+    def get_file_list(self) -> Optional[List[Path]]:
         try:
             return [
                 file
@@ -41,7 +44,7 @@ class DirectoryFinder(BaseFinder):
         except AttributeError:
             return None
 
-    def get_submissions(self):
+    def get_submissions(self) -> SUB_GENERATOR:
         file_list = self.get_file_list()
         if file_list is None:
             raise RuntimeError('No submissions found')
@@ -54,13 +57,18 @@ class DirectoryFinder(BaseFinder):
 
 class SQLiteFinder(BaseFinder):
 
-    def __init__(self, path, table, ref_field, source_field):
+    def __init__(self,
+                 path: Union[str, Path],
+                 table: str,
+                 ref_field: str,
+                 source_field: str
+                 ):
         self.path = Path(path)
         self.table = table
         self.ref_field = ref_field
         self.source_field = source_field
 
-    def get_submissions(self, **kwargs):
+    def get_submissions(self, **kwargs: Any) -> SUB_GENERATOR:
         if not self.path.exists():
             raise RuntimeError(f"Path {self.path} does not exist")
 
@@ -74,8 +82,8 @@ class SQLiteFinder(BaseFinder):
 
 class NullFinder(BaseFinder):
 
-    def __init__(self, *subs):
+    def __init__(self, *subs: submission.Submission):
         self.subs = subs
 
-    def get_submissions(self, **kwargs):
+    def get_submissions(self, **kwargs: Any) -> SUB_GENERATOR:
         yield from self.subs

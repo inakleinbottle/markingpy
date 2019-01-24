@@ -2,10 +2,12 @@ import builtins
 import hashlib
 import importlib
 import importlib.util
+
 import inspect
 import logging
 import sys
 import time
+import types
 import warnings
 
 from builtins import (__import__,
@@ -15,15 +17,27 @@ from builtins import (__import__,
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
+from typing import (Optional, Type, Dict, Tuple, List, Any, Callable,
+                    Sequence, TYPE_CHECKING, Union)
+
+if TYPE_CHECKING:
+    import importlib.machinery
 
 from . import finders
 from . import magic
+from . import storage
+from . import submission
+from . import exercises
 
 from .config import GLOBAL_CONF
 from .exercises import Exercise, ExerciseError
 from .linters import linter
 from .utils import build_style_calc, log_calls
 from .storage import get_db
+
+
+ARGS = Tuple[Any, ...]
+KWARGS = Dict[str, Any]
 
 
 logger = logging.getLogger(__name__)
@@ -42,14 +56,14 @@ __all__ = [
 _MARKSCHEME = None
 
 
-def get_markscheme():
+def get_markscheme() -> Optional['MarkingScheme']:
     if _MARKSCHEME is None:
         raise RuntimeError('Markscheme has not been created.')
 
     return _MARKSCHEME
 
 
-def set_markscheme(markscheme):
+def set_markscheme(markscheme: 'MarkingScheme'):
     global _MARKSCHEME
     if _MARKSCHEME is not None:
         raise RuntimeError('Markscheme already created.')
@@ -65,7 +79,7 @@ class MarkschemeError(Exception):
     pass
 
 
-def mark_scheme(**params):
+def mark_scheme(**params: Any) -> 'MarkschemeConfig':
     """
     Create a marking scheme config.py object.
 
@@ -102,7 +116,9 @@ def mark_scheme(**params):
     return conf
 
 
-def get_spec_path_or_module(name, modname='markingpy_marking_scheme'):
+def get_spec_path_or_module(name: Union[str, Path],
+                            modname: str='markingpy_marking_scheme'
+                            ) ->  Optional[importlib.machinery.ModuleSpec]:
     path = Path(name).resolve()
     if path.exists():
         return importlib.util.spec_from_file_location(
@@ -119,7 +135,7 @@ def get_spec_path_or_module(name, modname='markingpy_marking_scheme'):
 
 # noinspection PyNoneFunctionAssignment
 @log_calls
-def import_markscheme(path):
+def import_markscheme(path: Path) -> 'MarkingScheme':
     """
     Import the marking scheme from path.
 
@@ -154,25 +170,25 @@ class WrappedModule:
     Wrapper around module types to control access to certain attributes.
     """
 
-    def __init__(self, mod):
+    def __init__(self, mod: types.ModuleType):
         self.mod = mod
         self.__name__ = mod.__name__
         self.__doc__ = mod.__doc__
         self.__loader__ = mod.__loader__
         self.__package__ = mod.__package__
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self.mod)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.mod)
 
-    def __getattr__(self, item):
+    def __getattr__(self, item: str) -> Any:
         if not item in self.__dict__:
             return getattr(self.mod, item)
         raise AttributeError(f'{self.__name__} has no attribute {item}')
 
-    def __setattr__(self, name, val):
+    def __setattr__(self, name: str, val: Any):
         self.__dict__[name] = val
 
 
@@ -181,7 +197,7 @@ class ControlledFunction:
     Wrapper for builtin functions to control their execution in sandbox.
     """
 
-    def __init__(self, func):
+    def __init__(self, func: Callable):
         wraps(func)(self)
         self.func = func
         self.allowed = False
@@ -194,7 +210,7 @@ class ControlledFunction:
         finally:
             self.allowed = False
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args: Any, **kwargs: Any):
         if not self.allowed:
             raise ForbiddenFunctionCall
         self.func(*args, **kwargs)
@@ -206,7 +222,7 @@ class ModuleList(dict):
     """
     wrapper_class = WrappedModule
 
-    def __setitem__(self, name, val):
+    def __setitem__(self, name: str, val: Any):
         super().__setitem__(name, WrappedModule(val))
 
 
@@ -220,8 +236,14 @@ class Importer:
     access to certain attributes in a module.
     """
 
-    def __init__(self, namespace, allowed=None, forbidden=None,
-                 import_=__import__, eval_=None, exec_=None):
+    def __init__(self,
+                 namespace: KWARGS,
+                 allowed: Optional[List[str]]=None,
+                 forbidden: Optional[List[str]]=None,
+                 import_: Callable=__import__,
+                 eval_: Optional[Callable]=None,
+                 exec_: Optional[Callable]=None
+                 ):
         self.namespace = namespace
         self.allowed = allowed if allowed else []
         self.forbidden = forbidden if forbidden else []
@@ -244,7 +266,7 @@ class Importer:
         finally:
             self.namespace['__builtins__']['__import__'] = self
 
-    def __call__(self, name, *args):
+    def __call__(self, name: str, *args: Any) -> types.ModuleType:
         if self._is_forbidden(name):
             raise ForbiddenImportError(
                 f'Importing {name} is forbidden'
@@ -297,18 +319,18 @@ class MarkingScheme(magic.MagicBase):
 
     def __init__(
             self,
-            unique_id=None,
-            marks=None,
-            style_formula=None,
-            style_marks=10,
-            score_style="basic",
-            submission_path=None,
-            finder=None,
-            marks_db=None,
-            allowed_modules=None,
-            forbidden_modules=None,
-            preload_modules=None,
-            **kwargs,
+            unique_id: Optional[str]=None,
+            marks: Optional[int]=None,
+            style_formula: Optional[str]=None,
+            style_marks: Optional[int]=10,
+            score_style: str="basic",
+            submission_path: Optional[str]=None,
+            finder: Optional[Type[finders.BaseFinder]]=None,
+            marks_db: Optional[str]=None,
+            allowed_modules: Optional[Sequence[str]]=None,
+            forbidden_modules:  Optional[Sequence[str]]=None,
+            preload_modules:  Optional[Sequence[str]]=None,
+            **kwargs: Any
             ):
         # Unique identifier - hash of path with user
         self.unique_id = unique_id
@@ -355,7 +377,7 @@ class MarkingScheme(magic.MagicBase):
         for k in kwargs:
             warnings.warn(f"Unrecognised option {k}")
 
-    def update_config(self, args):
+    def update_config(self, args: KWARGS):
         for k, v in args.items():
             if v is None:
                 continue
@@ -400,7 +422,7 @@ class MarkingScheme(magic.MagicBase):
 
         logger.info(f'Marking validation: Passed')
 
-    def add_exercise(self, exercise):
+    def add_exercise(self, exercise: Type[exercises.ExerciseBase]):
         """
         Add an exercise to this marking scheme.
 
@@ -417,7 +439,7 @@ class MarkingScheme(magic.MagicBase):
         """
         yield from self.finder.get_submissions()
 
-    def set_unique_id(self, module_name='markingpy_marking_scheme'):
+    def set_unique_id(self, module_name: str='markingpy_marking_scheme'):
         """
         Set the unique id for this marking scheme.
 
@@ -432,7 +454,7 @@ class MarkingScheme(magic.MagicBase):
                         inspect.getsource(mod).encode()
                     ).hexdigest()
 
-    def get_db(self):
+    def get_db(self) -> storage.Database:
         """
         Get the Marks database for this markingscheme. This uses the
         ``marks_db`` option set in the mark scheme setup or in the global
@@ -443,7 +465,7 @@ class MarkingScheme(magic.MagicBase):
         self.set_unique_id()
         return get_db(self.marks_db, self.unique_id)
 
-    def format_return(self, score, total_score):
+    def format_return(self, score: int, total_score: int) -> str:
         """
         Format the returned score.
 
@@ -470,7 +492,7 @@ class MarkingScheme(magic.MagicBase):
             )
 
     @contextmanager
-    def sandbox(self, ns, submission):
+    def sandbox(self, ns: KWARGS, sub: submission.Submission):
         """
         Create a sandbox to exec submission code in a context manager. This
         replaces ``sys.modules`` with a chain map so that imported modules will
@@ -481,9 +503,9 @@ class MarkingScheme(magic.MagicBase):
             yield
             for w in warns:
                 print(w.message)
-            submission.add_feedback('execution', warns)
+            sub.add_feedback('execution', warns)
 
-    def prepare_namespace(self):
+    def prepare_namespace(self) -> Dict[str, Any]:
         """
         Prepare the namespace for a submission.
 
@@ -516,20 +538,20 @@ class MarkingScheme(magic.MagicBase):
         return ns
 
     @log_calls
-    def run(self, submission):
+    def run(self, sub: submission.Submission):
         """
         Grade a submission.
 
-        :param submission: Submission to grade
+        :param sub: Submission to grade
         """
         if self.start_time is None:
             self.start_time = self.last_marked_time = time.time()
 
         # Generate the submission functions by executing into a prepared
         # namespace.
-        code = submission.compile()
+        code = sub.compile()
         ns = self.prepare_namespace()
-        with self.sandbox(ns, submission):
+        with self.sandbox(ns, sub):
             exec(code, ns)
 
         score = 0
@@ -543,9 +565,9 @@ class MarkingScheme(magic.MagicBase):
             score += mark
             total_score += total_marks
             report.append(feedback)
-        submission.add_feedback("tests", "\n".join(report))
+        sub.add_feedback("tests", "\n".join(report))
 
-        lint_report = self.linter(submission)
+        lint_report = self.linter(sub)
         style_score = round(self.style_calc(lint_report) * self.style_marks)
         score += style_score
         total_score += self.style_marks
@@ -553,19 +575,19 @@ class MarkingScheme(magic.MagicBase):
             lint_report.read(),
             f"Style score: {style_score} / {self.style_marks}",
         ]
-        submission.add_feedback("style", "\n".join(style_feedback))
+        sub.add_feedback("style", "\n".join(style_feedback))
 
         # Calculate scores
-        submission.percentage = round(100 * score / total_score)
-        submission.score = self.format_return(score, total_score)
+        sub.percentage = round(100 * score / total_score)
+        sub.score = self.format_return(score, total_score)
 
         # Timing statistics
         finish_time = time.time()
         elapsed = finish_time - self.last_marked_time
         cum_time = finish_time - self.start_time
         self.last_marked_time = finish_time
-        self.timing_stats.append((submission.reference, elapsed, cum_time))
+        self.timing_stats.append((sub.reference, elapsed, cum_time))
         logger.info(
-            f'Submission {submission.reference}, elapsed: {elapsed:5.5g}, '
+            f'Submission {sub.reference}, elapsed: {elapsed:5.5g}, '
             f'total time: {cum_time:5.5g}'
         )
