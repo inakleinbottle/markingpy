@@ -1,4 +1,7 @@
 import logging
+import types
+import typing
+import inspect
 
 from collections import namedtuple, abc
 from contextlib import redirect_stdout
@@ -418,17 +421,75 @@ class MethodTimingTest(TimingTest):
         return super().run(func)
 
 
-class SuccessCriterion(BaseTest):
+SuccessCriterion = namedtuple('SuccessCriterion',
+                              ['name', 'descr', 'marks', 'criterion'])
 
-    def __init__(self, criterion, **kwargs):
+
+class InteractionTest(BaseTest):
+    """
+    Test interaction with some object.
+    """
+
+    def __init__(self, cls, inst_call, **kwargs):
+        self.cls = cls
+        self.inst_call = inst_call
+        self.instance = None
+        self.success_criteria = []
         super().__init__(**kwargs)
-        self.criterion = criterion
+
+    def create_proxy_ns(
+            self,
+            ns: typing.Dict[str, typing.Any]
+        ):
+
+        def getter(self_, name):
+            if name.startswith('_'):
+                raise AttributeError(
+                    f'{self_.__class__.__name__} has no attribute {name}'
+                )
+            return getattr(self.instance, name)
+
+        def setter(self_, name, val):
+            if name.startswith('_'):
+                raise TypeError(f'Cannot set attribute {name}')
+            return setattr(self.instance, name, val)
+
+        ns['__getattr__'] = getter
+        ns['__setattr__'] = setter
+
+    def create_instance_proxy(self):
+        self.instance = self.cls(*self.inst_call.args,
+                                 **self.inst_call.kwargs)
+        proxy_cls = types.new_class('Proxy', (),
+                                    exec_body=self.create_proxy_ns)
+        return proxy_cls()
+
+    def success_criterion(self, name=None, descr=None, marks=None):
+
+        if inspect.isfunction(name):
+            fn = name
+            name = None
+        else:
+            fn = None
+
+        def deco(func):
+            self.success_criteria.append(
+                SuccessCriterion(name, descr, marks, func)
+            )
+            return func
+
+        if fn:
+            return deco(fn)
+        else:
+            return deco
 
     def create_test(self, other):
         return ExecutionContext()
 
-    def run(self, environment):
-        res = self.criterion(environment)
+    def get_success(self, ctx, test_output):
+        crt = self.success_criteria
+        return (ctx.ran_successfully
+                and all(c.criterion(test_output) for c in crt))
 
-        # Process the result here.
-        return res
+    def run(self, other):
+        return other(self.create_instance_proxy())

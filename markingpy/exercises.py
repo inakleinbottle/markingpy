@@ -98,6 +98,7 @@ class Exercise(ExerciseBase):
         self.tests = []
         self.num_tests = 0
         self.func = function_or_class
+        self.submission_func_name = function_or_class.__name__
         self.exc_func = record_call
         self.name = name if name else self.get_name()
         self.descr = descr
@@ -230,6 +231,30 @@ class Exercise(ExerciseBase):
         elif isfunction(name):
             return decorator(name)
 
+    def get_submission_function(self, namespace):
+        return namespace.get(self.submission_func_name, None)
+
+    def format_feedback(self, results):
+        if not results:
+            msg = (
+                f"Function {self.submission_func_name} was not found in "
+                "submission."
+            )
+            return ExerciseFeedback(0, self.total_marks, msg, [])
+
+        feedback = [self.name]
+        if self.descr:
+            feedback.append(self.descr)
+
+        feedback.extend(r.feedback for r in results)
+        score = sum(r.mark for r in results)
+        feedback.append(
+            f"Score for {self.name}: {score} / {self.total_marks}"
+        )
+        return ExerciseFeedback(
+            score, self.total_marks, "\n".join(feedback), results
+        )
+
     def run(self, namespace):
         """
         Run the test suite on submission.
@@ -237,27 +262,13 @@ class Exercise(ExerciseBase):
         :param namespace: submission namespace
         :return: namedtuple containing marks, total_marks, feedback
         """
-        fn_name = self.func.__name__
-        submission_fun = namespace.get(fn_name, None)
-        if submission_fun is not None:
-            feedback = [self.name]
-            if self.descr:
-                feedback.append(self.descr)
-            results = [test(submission_fun) for test in self.tests]
-            feedback.extend(r.feedback for r in results)
-            score = sum(r.mark for r in results)
-            feedback.append(
-                f"Score for {self.name}: {score} / {self.total_marks}"
-            )
-            return ExerciseFeedback(
-                score, self.total_marks, "\n".join(feedback), results
-            )
+        submission_fun = self.get_submission_function(namespace)
+        if submission_fun is None:
+            return self.format_feedback([])
 
-        else:
-            msg = "Function {} was not found in submission."
-            return ExerciseFeedback(
-                0, self.total_marks, msg.format(self.func.__name__), []
-            )
+        results = [test(submission_fun) for test in self.tests]
+
+        return self.format_feedback(results)
 
 
 class ExerciseFunctionProxy:
@@ -392,7 +403,6 @@ class ClassExercise(Exercise):
 
         def wrapper(*iargs, **ikwargs):
             return ExerciseInstance(self, self.func, *iargs, **ikwargs)
-
         self.exc_func = wrapper
 
     @log_calls("info")
@@ -450,54 +460,9 @@ class ClassExercise(Exercise):
         )
 
 
-def exercise(name=None, cls=None, **args):
+class InteractionExercise(Exercise):
     """
-    Create a new exercise using this function or class as the model solution.
-
-    The decorated function or class will be wrapped by an Exercise object that
-    behaves like the original object.
-
-    Keyword arguments are forwarded to the Exercise instance.
-
-    :param name: Name for the exercise.
-    :type name: str
-    :param cls: The exercise class to be instantiated. Defaults to
-        :class:`FunctionExercise` if a function is decorated and
-        :class:`ClassExercise` if a class is decorated.
-    :type cls: :class:`Exercise`
-    """
-    if isinstance(name, str):
-        args["name"] = name
-        name = None
-
-    def decorator(fn):
-        nonlocal cls
-        if cls is None and isfunction(fn):
-            cls = FunctionExercise
-        elif cls is None and isclass(fn):
-            cls = ClassExercise
-        else:
-            raise TypeError("Expecting function or class.")
-
-        return cls(fn, **args)
-
-    if name is None:
-        return decorator
-
-    else:
-        return decorator(name)
-
-
-SuccessCriterion = namedtuple('SuccessCriteria', ('name',
-                                                  'descr',
-                                                  'condition',
-                                                  'points'))
-
-
-class OutcomeBasedExercise(Exercise):
-    """
-    Exercise class testing known or algorithmic outcomes rather than testing
-    against a model solution.
+    Exercise class for testing interaction with some preset object.
 
     Construct exercises based on principle success criteria, rather than
     knowing a model solution and testing output against one another.
@@ -517,71 +482,62 @@ class OutcomeBasedExercise(Exercise):
     solve the problem.
     """
 
-    def __init__(self, environment, submission_func_name, **kwargs):
-        super().__init__(self, None, **kwargs)
-        self.environment = environment
+    def __init__(self, environment, submission_func_name=None, **kwargs):
+        super().__init__(environment, **kwargs)
         self.primary_criteria = []
         self.secondary_criteria = []
         self.submission_func_name = submission_func_name
 
-    @staticmethod
-    def _criterion_decorator(append_to, name, descr, points):
-        def deco(func):
-            criterion = cases.SuccessCriterion(func, name=name, descr=descr,
-                                               marks=points)
-            append_to.append(criterion)
-            return func
-        return deco
-
-    def primary_criterion(self, name=None, descr=None, points=None):
-        return self._criterion_decorator(self.primary_criteria, name, descr,
-                                         points)
-
-    def secondary_criterion(self, name=None, descr=None, points=None):
-        return self._criterion_decorator(self.secondary_criteria, name,
-                                         descr, points)
-
-    def format_feedback(self, primary_results, secondary_results):
+    def new_test(self, instantiation_call, **kwargs):
         """
-        Determine and format the results of a test run
+        Create a new test.
 
-        :param primary_results:
-        :param secondary_results:
+        :param instantiation_call:
+        :param kwargs:
         :return:
         """
+        self.add_test(self.func, instantiation_call,
+                      cls=cases.InteractionTest, **kwargs)
 
-    def run(self, namespace):
-        """
-        Run the test on the submission function.
 
-        The general procedure is:
-         1. create an instance of the environment class;
-         2. apply the submission function;
-         3. test criteria against mutated environment;
-         4. process criteria and return feedback.
+def exercise(name=None, cls=None, interactive=False, **args):
+    """
+    Create a new exercise using this function or class as the model solution.
 
-         :param namespace: Submission namespace to test
-         :return: :class:`ExerciseFeedback` object
-        """
+    The decorated function or class will be wrapped by an Exercise object that
+    behaves like the original object.
 
-        # Make a new instance of the environment
-        env = self.environment()
+    Keyword arguments are forwarded to the Exercise instance.
 
-        # get the function to run
-        other = namespace.get(self.submission_func_name, None)
+    :param interactive:
+    :param name: Name for the exercise.
+    :type name: str
+    :param cls: The exercise class to be instantiated. Defaults to
+        :class:`FunctionExercise` if a function is decorated and
+        :class:`ClassExercise` if a class is decorated.
+    :type cls: :class:`Exercise`
+    """
+    if isinstance(name, str):
+        args["name"] = name
+        name = None
 
-        if other is None:
-            msg = "Function {} was not found in submission."
-            return ExerciseFeedback(
-                0, self.total_marks, msg.format(self.func.__name__), []
-            )
+    def decorator(fn):
+        nonlocal cls
+        if cls is None and isfunction(fn):
+            cls = FunctionExercise
+        elif cls is None and isclass(fn) and interactive:
+            cls = InteractionExercise
+        elif cls is None and isclass(fn):
+            cls = ClassExercise
+        else:
+            raise TypeError("Expecting function or class.")
 
-        # Run it through the submission function
-        other(env)
+        return cls(fn, **args)
 
-        # Process the criteria
-        primary_results = [crit(env)
-                           for crit in self.primary_criteria]
-        secondary_results = [crit(env)
-                             for crit in self.secondary_criteria]
-        return self.format_feedback(primary_results, secondary_results)
+    if name is None:
+        return decorator
+
+    else:
+        return decorator(name)
+
+
