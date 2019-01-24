@@ -3,6 +3,7 @@ Utilities for the MarkingPy package.
 """
 import ast
 import logging
+import typing
 from contextlib import contextmanager
 from functools import wraps
 from inspect import isfunction, Signature, Parameter, stack
@@ -64,7 +65,7 @@ class TestCaseFunction:
     :param expr: Expression to evaluate on call.
     """
 
-    def __init__(self, expr):
+    def __init__(self, expr: str):
         self.expr = expr
         self.code = compile(expr, '<expr>', 'eval')
         visitor = GetArgumentVisitor()
@@ -84,7 +85,7 @@ class TestCaseFunction:
         return self.expr
 
 
-def log_calls(level=None):
+def log_calls(level: str=None):
     if isfunction(level):
         fn = level
         level = logging.DEBUG
@@ -120,7 +121,8 @@ def time_exceeded():
     raise RunTimeoutError
 
 
-def build_style_calc(formula):
+def build_style_calc(formula) -> typing.Callable[[typing.Dict[str, int]],
+                                                 float]:
     """
     Build a style calculator by providing a formula
     """
@@ -145,7 +147,7 @@ DEFAULT_STYLE_FORMULA = (
 default_style_calc = build_style_calc(DEFAULT_STYLE_FORMULA)
 
 
-def str_format_args(args, kwargs):
+def str_format_args(args: typing.Tuple, kwargs: typing.Dict) -> str:
     """
     Format the args and kwargs of a function call.
 
@@ -160,7 +162,11 @@ def str_format_args(args, kwargs):
     return args_msg
 
 
-def time_run(func, args, kwargs):
+def time_run(
+        func: typing.Callable,
+        args: typing.Tuple[typing.Any],
+        kwargs: typing.Dict[str, typing.Any]
+        ) -> float:
     """
     Time the running of a function.
 

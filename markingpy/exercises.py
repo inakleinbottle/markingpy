@@ -43,7 +43,7 @@ class ExerciseBase:
             self._marking_scheme.add_exercise(self)
 
     @staticmethod
-    def get_all_exercises():
+    def get_all_exercises() -> typing.List:
         return [r for r in _EXERCISES]
 
     @classmethod
@@ -51,7 +51,7 @@ class ExerciseBase:
         if not NO_ADD_EXERCISES:
             cls._marking_scheme = marking_scheme
 
-    def get_number(self):
+    def get_number(self) -> int:
         return _EXERCISES[self]
 
 

@@ -43,22 +43,29 @@ class BaseTest(magic.MagicBase):
     __enforced = ["create_test", "run"]
     indent = " " * 4
 
-    def __init__(self, *, name=None, descr=None, marks=0, exercise=None):
+    def __init__(self,
+                 *,
+                 name: typing.optional[str]=None,
+                 descr: typing.Optional[str]=None,
+                 marks: int=0,
+                 exercise: typing.Optional[Exercise]=None):
         self.exercise = exercise
         self.name = name
         self.descr = descr
         self.marks = marks
 
-    def get_name(self):
+    def get_name(self) -> str:
         return self.__class__.__name__
 
-    def __str__(self):
+    def __str__(self) -> str:
         rv = self.name.replace("_", " ")
         if self.descr:
             rv += "\n" + self.descr
         return rv
 
-    def __call__(self, other):
+    def __call__(self,
+                 other: typing.Union[typing.Callable, typing.Type]
+                 ) -> TestFeedback:
         """
         Run the test.
 
@@ -93,7 +100,7 @@ class BaseTest(magic.MagicBase):
         """
         raise NotImplementedError
 
-    def get_success(self, ctx, test_output):
+    def get_success(self, ctx: ExecutionContext, test_output: typing.Any):
         """
         Examine result and determine whether a test was successful.
 
@@ -103,25 +110,36 @@ class BaseTest(magic.MagicBase):
         """
         return ctx.ran_successfully and test_output
 
-    def get_marks(self, ctx, test_output, success):
+    def get_marks(self,
+                  ctx: ExecutionContext,
+                  test_output: typing.Any,
+                  success: bool
+                  ) -> int:
         return self.marks if success else 0
 
-    def format_error(self, err):
+    def format_error(self,
+                     err: typing.Tuple[typing.Type,
+                                       Exception,
+                                       typing.Any]
+                     ) -> str:
         return "\n.".join(
             self.indent + line for line in str(err[1]).splitlines()
         )
 
-    def format_warnings(self, warnings):
+    def format_warnings(self, warnings: typing.List[Warning]) -> str:
         return "\n".join(
             self.indent + line.strip()
             for warning in warnings
             for line in str(warning.message).strip().splitlines()
         )
 
-    def format_stdout(self, stdout):
+    def format_stdout(self, stdout: str) -> str:
         return "\n".join(self.indent + line for line in stdout.splitlines())
 
-    def format_feedback(self, context: ExecutionContext, test_output):
+    def format_feedback(self,
+                        context: ExecutionContext,
+                        test_output: typing.Any
+                        ) -> TestFeedback:
         """
         Collect information and format feedback.
 
@@ -175,17 +193,19 @@ class CallTest(BaseTest):
         .. versionadded:: 0.2.0
 
     """
-    call_args: args
-    call_kwargs: kwargs
+    call_args: args  # args is a tuple, and will be converted.
+    call_kwargs: kwargs  # kwargs is a dict, and will be converted
 
     def __init__(
         self,
-        call_args,
-        call_kwargs,
+        call_args: typing.Optional[typing.Tuple[typing.Any]],
+        call_kwargs: typing.Optional[typing.Dict[str, typing.Any]],
         *,
-        expects_error=None,
-        tolerance=None,
-        **kwargs,
+        expects_error: typing.Union[typing.Tuple[typing.Type[Exception]],
+                                    typing.Type[Exception],
+                                    None]=None,
+        tolerance: typing.Optional[float]=None,
+        **kwargs: typing.Any,
     ):
         self.call_args = call_args
         self.call_kwargs = call_kwargs
@@ -208,10 +228,13 @@ class CallTest(BaseTest):
         """
         return self.exercise.func(* self.call_args, ** self.call_kwargs)
 
-    def create_test(self, other):
+    def create_test(self, other: typing.Callable) -> ExecutionContext:
         return ExecutionContext()
 
-    def get_success(self, ctx, test_output):
+    def get_success(self,
+                    ctx: ExecutionContext,
+                    test_output: typing.Any
+                    ) -> int:
         if self.expects_error is not None:
             err = ctx.error
             if isinstance(err[1], self.expects_error):
@@ -231,7 +254,7 @@ class CallTest(BaseTest):
         diff = abs(test_output - self.expected)
         return diff < self.tolerance
 
-    def run(self, other):
+    def run(self, other: typing.Callable) -> typing.Any:
         args_msg = str_format_args(self.call_args, self.call_kwargs)
         print(f'Testing with input: ({args_msg})')
         output = other(* self.call_args, ** self.call_kwargs)
