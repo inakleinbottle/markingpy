@@ -98,6 +98,7 @@ class Exercise(ExerciseBase):
         self.tests = []
         self.num_tests = 0
         self.func = function_or_class
+        self.submission_func_name = function_or_class.__name__
         self.exc_func = record_call
         self.name = name if name else self.get_name()
         self.descr = descr
@@ -230,6 +231,30 @@ class Exercise(ExerciseBase):
         elif isfunction(name):
             return decorator(name)
 
+    def get_submission_function(self, namespace):
+        return namespace.get(self.submission_func_name, None)
+
+    def format_feedback(self, results):
+        if not results:
+            msg = (
+                f"Function {self.submission_func_name} was not found in "
+                "submission."
+            )
+            return ExerciseFeedback(0, self.total_marks, msg, [])
+
+        feedback = [self.name]
+        if self.descr:
+            feedback.append(self.descr)
+
+        feedback.extend(r.feedback for r in results)
+        score = sum(r.mark for r in results)
+        feedback.append(
+            f"Score for {self.name}: {score} / {self.total_marks}"
+        )
+        return ExerciseFeedback(
+            score, self.total_marks, "\n".join(feedback), results
+        )
+
     def run(self, namespace):
         """
         Run the test suite on submission.
@@ -237,27 +262,13 @@ class Exercise(ExerciseBase):
         :param namespace: submission namespace
         :return: namedtuple containing marks, total_marks, feedback
         """
-        fn_name = self.func.__name__
-        submission_fun = namespace.get(fn_name, None)
-        if submission_fun is not None:
-            feedback = [self.name]
-            if self.descr:
-                feedback.append(self.descr)
-            results = [test(submission_fun) for test in self.tests]
-            feedback.extend(r.feedback for r in results)
-            score = sum(r.mark for r in results)
-            feedback.append(
-                f"Score for {self.name}: {score} / {self.total_marks}"
-            )
-            return ExerciseFeedback(
-                score, self.total_marks, "\n".join(feedback), results
-            )
+        submission_fun = self.get_submission_function(namespace)
+        if submission_fun is None:
+            return self.format_feedback([])
 
-        else:
-            msg = "Function {} was not found in submission."
-            return ExerciseFeedback(
-                0, self.total_marks, msg.format(self.func.__name__), []
-            )
+        results = [test(submission_fun) for test in self.tests]
+
+        return self.format_feedback(results)
 
 
 class ExerciseFunctionProxy:
@@ -341,8 +352,6 @@ class ExerciseMethodProxy(ExerciseFunctionProxy):
         raise TypeError
 
 
-
-
 # noinspection PyProtectedMember
 class ExerciseInstance:
 
@@ -394,7 +403,6 @@ class ClassExercise(Exercise):
 
         def wrapper(*iargs, **ikwargs):
             return ExerciseInstance(self, self.func, *iargs, **ikwargs)
-
         self.exc_func = wrapper
 
     @log_calls("info")
@@ -452,7 +460,47 @@ class ClassExercise(Exercise):
         )
 
 
-def exercise(name=None, cls=None, **args):
+class InteractionExercise(Exercise):
+    """
+    Exercise class for testing interaction with some preset object.
+
+    Construct exercises based on principle success criteria, rather than
+    knowing a model solution and testing output against one another.
+
+    For example, finding solutions to randomly generated mazes. There is not a
+    model solution to this problem. The principle success criteria is
+    exiting the maze. Secondary success criteria could be the number of
+    dead-ends met during the solution. (The implementation of randomly
+    generated mazes is itself an interesting challenge.)
+
+    The syntax for this exercise is different from other exercises. The
+    exercise wraps an environment object that determines the parameters for
+    the test. In the example above, this would be the maze. The submission
+    can interact with the object using its methods. For instance,
+    these could be moving in each direction, or looking ahead. The submission
+    function must use only the functions provided by the environment object to
+    solve the problem.
+    """
+
+    def __init__(self, environment, submission_func_name=None, **kwargs):
+        super().__init__(environment, **kwargs)
+        self.primary_criteria = []
+        self.secondary_criteria = []
+        self.submission_func_name = submission_func_name
+
+    def new_test(self, instantiation_call, **kwargs):
+        """
+        Create a new test.
+
+        :param instantiation_call:
+        :param kwargs:
+        :return:
+        """
+        self.add_test(self.func, instantiation_call,
+                      cls=cases.InteractionTest, **kwargs)
+
+
+def exercise(name=None, cls=None, interactive=False, **args):
     """
     Create a new exercise using this function or class as the model solution.
 
@@ -461,6 +509,7 @@ def exercise(name=None, cls=None, **args):
 
     Keyword arguments are forwarded to the Exercise instance.
 
+    :param interactive:
     :param name: Name for the exercise.
     :type name: str
     :param cls: The exercise class to be instantiated. Defaults to
@@ -476,6 +525,8 @@ def exercise(name=None, cls=None, **args):
         nonlocal cls
         if cls is None and isfunction(fn):
             cls = FunctionExercise
+        elif cls is None and isclass(fn) and interactive:
+            cls = InteractionExercise
         elif cls is None and isclass(fn):
             cls = ClassExercise
         else:
@@ -488,3 +539,5 @@ def exercise(name=None, cls=None, **args):
 
     else:
         return decorator(name)
+
+
