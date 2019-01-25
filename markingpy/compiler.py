@@ -53,7 +53,7 @@ class RemovedChunk(Chunk):
             if not r.removed_at in rm_list:
                 self.reasons.append(r)
 
-    def join(self, other: Type[Chunk]) -> Chunk:
+    def join(self, other: 'RemovedChunk') -> 'RemovedChunk':
         if self.line_start > other.line_end:
             # other first
             content = "\n".join([other.content, self.content])
@@ -85,7 +85,7 @@ class Compiler:
         
     """
 
-    def __init__(self, filename: str="<input>", mode:str ="exec"):
+    def __init__(self, filename: str = "<input>", mode: str = "exec"):
         """
         Constructor.
         """
@@ -111,7 +111,7 @@ class Compiler:
         )
 
     def remove_line(
-            self, chunk:Chunk, lineno: int, reason: Reason
+            self, chunk:Chunk, lineno: int, reason: Exception
             ) -> Tuple[Chunk, Chunk]:
         """
         Remove a line from the source.
@@ -158,7 +158,7 @@ class Compiler:
         except SyntaxError as err:
             self.handle_compile_exception(err, chunk)
 
-    def handle_compile_exception(self, err: Type[Exception], chunk: Chunk):
+    def handle_compile_exception(self, err: Exception, chunk: Chunk):
         """
         Handle an exception raised during compilation.
         """

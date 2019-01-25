@@ -9,7 +9,11 @@ from functools import wraps
 from inspect import isfunction, Signature, Parameter, stack
 from time import time
 
-from typing import Any, Set, Callable, Dict, Tuple, ContextManager
+from typing import (Any, Set, Callable, Dict, Tuple, ContextManager,
+                    TYPE_CHECKING)
+
+if TYPE_CHECKING:
+    from .linters import LinterReport
 
 ARGS = Tuple[Any, ...]
 KWARGS = Dict[str, Any]
@@ -43,11 +47,11 @@ class GetArgumentVisitor(ast.NodeVisitor):
     _names = set()
     _func_names = set()
 
-    def visit_Call(self, node: ast.AST):
+    def visit_Call(self, node: ast.Call):
         self._func_names.add(node.func.id)
         self.generic_visit(node)
 
-    def visit_Name(self, node: ast.AST):
+    def visit_Name(self, node: ast.Name):
         self._names.add(node.id)
         self.generic_visit(node)
 
@@ -128,8 +132,7 @@ def time_exceeded():
     raise RunTimeoutError
 
 
-def build_style_calc(formula) -> typing.Callable[[typing.Dict[str, int]],
-                                                 float]:
+def build_style_calc(formula) -> Callable[['LinterReport'], float]:
     """
     Build a style calculator by providing a formula
     """
@@ -193,7 +196,7 @@ if resource is not None and signal is not None:
     __all__.append('cpu_linit')
 
     @contextmanager
-    def cpu_limit(limit) -> ContextManager:
+    def cpu_limit(limit) -> ContextManager[None]:
         """
         Context manager, limits the CPU time of a set of commands.
 

@@ -13,6 +13,7 @@ tox = "==3.7.0"
 black = "==18.3a0"
 pytest-cov = "*"
 pytest-pycharm = "*"
+mypy = "*"
 
 [packages]
 pylint = "==2.2.0"

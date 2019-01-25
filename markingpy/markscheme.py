@@ -322,14 +322,14 @@ class MarkingScheme(magic.MagicBase):
             unique_id: Optional[str]=None,
             marks: Optional[int]=None,
             style_formula: Optional[str]=None,
-            style_marks: Optional[int]=10,
+            style_marks: int=10,
             score_style: str="basic",
             submission_path: Optional[str]=None,
             finder: Optional[Type[finders.BaseFinder]]=None,
             marks_db: Optional[str]=None,
-            allowed_modules: Optional[Sequence[str]]=None,
-            forbidden_modules:  Optional[Sequence[str]]=None,
-            preload_modules:  Optional[Sequence[str]]=None,
+            allowed_modules: Optional[str]=None,
+            forbidden_modules:  Optional[str]=None,
+            preload_modules:  Optional[str]=None,
             **kwargs: Any
             ):
         # Unique identifier - hash of path with user
@@ -344,8 +344,8 @@ class MarkingScheme(magic.MagicBase):
         self.preload_modules = preload_modules
 
         # set up timing
-        self.start_time = None
-        self.last_marked_time = None
+        self.start_time = 0.0
+        self.last_marked_time = 0.0
         self.timing_stats = []
 
         # Set the exercises
@@ -396,6 +396,7 @@ class MarkingScheme(magic.MagicBase):
         in order to be deemed valid.
 
         :raises: :class:`MarkingSchemeError` on validation failure.
+        :raises: :class:`ExerciseError` if an exercise fails to validate.
         """
         logger.info('Validating Markscheme')
         for ex in self.exercises:
@@ -544,7 +545,7 @@ class MarkingScheme(magic.MagicBase):
 
         :param sub: Submission to grade
         """
-        if self.start_time is None:
+        if not self.start_time:
             self.start_time = self.last_marked_time = time.time()
 
         # Generate the submission functions by executing into a prepared

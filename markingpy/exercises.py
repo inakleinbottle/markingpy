@@ -31,6 +31,7 @@ __all__ = [
     'ExerciseFeedback',
     'ClassExercise',
     'FunctionExercise',
+    'InteractionExercise',
     'exercise',
 ]
 NO_ADD_EXERCISES = False

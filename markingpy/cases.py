@@ -9,13 +9,12 @@ from io import StringIO
 from typing import (Callable, Union, Optional, Type, Any, Tuple, Dict, List,
     Iterable)
 
-ARGS = Tuple[Any, ...]
-KWARGS = Dict[str, Any]
-
-
 from .utils import time_run, str_format_args
 from .execution import ExecutionContext
 from .import magic
+
+ARGS = Tuple[Any, ...]
+KWARGS = Dict[str, Any]
 
 logger = logging.getLogger(__name__)
 TestFeedback = namedtuple("TestFeedback", ("test", "mark", "feedback"))
@@ -29,6 +28,7 @@ __all__ = [
     'MethodTest',
     'MethodTimingTest',
     'Call',
+    'InteractionTest',
 ]
 
 
