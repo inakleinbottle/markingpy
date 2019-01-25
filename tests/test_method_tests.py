@@ -4,6 +4,7 @@ import pytest
 
 from markingpy import MethodTest, MethodTimingTest, Call, Exercise, TimingCase
 
+
 @pytest.fixture
 def mock_ex():
     m_ex = mock.MagicMock(autospec=Exercise)
@@ -36,6 +37,7 @@ def test_method_test_setup(mock_ex, method_call):
     mock_ex.assert_called_with('one', 'two', kw='three')
     mock_ex._instance.method.assert_called_with(1, 2, kw=3)
 
+
 def test_run(mock_ex, mock_subms, method_call):
 
     # successful test
@@ -67,3 +69,7 @@ def method_timing(mock_ex):
 def test_method_timing_setup(mock_ex, method_timing):
     assert all(isinstance(c, TimingCase) for c in method_timing.cases)
     mock_ex.assert_called_with('one', 'two', kw='three')
+
+
+def test_run(mock_ex, method_timing):
+    pass

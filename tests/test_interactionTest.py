@@ -3,6 +3,7 @@ import pytest
 
 from markingpy import InteractionTest, Call, ExecutionContext, SuccessCriterion
 
+
 @pytest.fixture
 def dummy_class():
     class DummyClass:
@@ -15,6 +16,7 @@ def dummy_class():
         def method(self, repl):
             self._a = repl
     return DummyClass
+
 
 @pytest.fixture
 def inter_tst(dummy_class):
@@ -37,7 +39,11 @@ def test_create_instance_proxy(inter_tst):
     proxy.b = 3
     assert proxy.b == 3
 
-    # assert that proxy does not have properties _a and _b
+    # assert that proxy does not have properties _a and _kw
+    with pytest.raises(AttributeError):
+        b = proxy._b
+    with pytest.raises(AttributeError):
+        kw = proxy._kw
 
 
 def test_success_criterion(inter_tst):
