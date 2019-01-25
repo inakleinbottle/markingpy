@@ -29,6 +29,7 @@ __all__ = [
     'MethodTimingTest',
     'Call',
     'InteractionTest',
+    'SuccessCriterion',
 ]
 
 

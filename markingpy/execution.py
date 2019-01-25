@@ -10,6 +10,8 @@ from warnings import catch_warnings
 logger = logging.getLogger(__name__)
 
 
+__all__ = ['ExecutionContext']
+
 class ExecutionContext:
 
     def __init__(self):
