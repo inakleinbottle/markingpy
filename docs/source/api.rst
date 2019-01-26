@@ -47,7 +47,6 @@ Marking Schemes
 .. autoclass:: MarkingScheme
     :members:
 
-.. autofunction:: prepare_namespace
 
 .. autoclass:: Importer
 

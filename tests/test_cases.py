@@ -87,7 +87,6 @@ def test_running_of_test_method_bad_function(call_test_m):
 def test_call_test_run_with_print(call_test_m):
 
     def other(input):
-        print(input)
         return input
 
     ctx = call_test_m.create_test(other)
@@ -186,7 +185,6 @@ def custom_test_m():
 
     @exercise
     def test_func(input):
-        print("Output")
         return input == "test"
 
     def custom_func():
@@ -214,7 +212,6 @@ def test_custom_test_create_execution_context(custom_test_m):
 def test_custom_test_run_test_good_func(custom_test_m):
 
     def other(input):
-        print("Output")
         return input == "test"
 
     submission_stdout = StringIO()

@@ -18,10 +18,7 @@ from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 from typing import (Optional, Type, Dict, Tuple, List, Any, Callable,
-                    Sequence, TYPE_CHECKING, Union)
-
-if TYPE_CHECKING:
-    import importlib.machinery
+                    TYPE_CHECKING, Union, ContextManager)
 
 from . import finders
 from . import magic
@@ -35,6 +32,9 @@ from .linters import linter
 from .utils import build_style_calc, log_calls
 from .storage import get_db
 
+
+if TYPE_CHECKING:
+    import importlib.machinery
 
 ARGS = Tuple[Any, ...]
 KWARGS = Dict[str, Any]
@@ -162,6 +162,10 @@ class ForbiddenImportError(ImportError):
 
 
 class ForbiddenFunctionCall(RuntimeError):
+    pass
+
+
+class SubmissionLoadError(Exception):
     pass
 
 
@@ -396,7 +400,6 @@ class MarkingScheme(magic.MagicBase):
         in order to be deemed valid.
 
         :raises: :class:`MarkingSchemeError` on validation failure.
-        :raises: :class:`ExerciseError` if an exercise fails to validate.
         """
         logger.info('Validating Markscheme')
         for ex in self.exercises:
@@ -404,9 +407,9 @@ class MarkingScheme(magic.MagicBase):
             # This also locks all exercises into submission mode.
             try:
                 ex.validate()
-            except ExerciseError:
+            except ExerciseError as err:
                 logger.error(f'Failed to validate {str(ex)}')
-                raise
+                raise MarkingSchemeError from err
             logger.debug(f'Validation of {ex.name}: Passed')
 
         if self.marks is not None:
@@ -493,18 +496,25 @@ class MarkingScheme(magic.MagicBase):
             )
 
     @contextmanager
-    def sandbox(self, ns: KWARGS, sub: submission.Submission):
+    def sandbox(self, ns: KWARGS, sub: submission.Submission) -> ContextManager[None]:
         """
         Create a sandbox to exec submission code in a context manager. This
         replaces ``sys.modules`` with a chain map so that imported modules will
         not have global effects. Upon exit, ``sys.modules`` is restored to
         its original state.
         """
-        with warnings.catch_warnings(record=True) as warns:
-            yield
-            for w in warns:
-                print(w.message)
-            sub.add_feedback('execution', warns)
+        try:
+            with warnings.catch_warnings(record=True) as warns:
+                yield
+                for w in warns:
+                    print(w.message)
+                sub.add_feedback('execution', warns)
+        except KeyboardInterrupt:
+            raise  # reraise keyboard interrupts
+        except SystemExit as err:
+            # There is no particular reason why a submission should raise a
+            # system exit, so we catch this and emit a more standard error.
+            raise SubmissionLoadError from err
 
     def prepare_namespace(self) -> Dict[str, Any]:
         """
