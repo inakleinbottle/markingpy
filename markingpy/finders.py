@@ -26,7 +26,6 @@ from typing import Union, List, Generator, Optional, Any
 from .import submission
 
 __all__ = ["BaseFinder", "DirectoryFinder", "SQLiteFinder", "NullFinder"]
-
 SUB_GENERATOR = Generator[submission.Submission, None, None]
 
 
@@ -73,12 +72,13 @@ class DirectoryFinder(BaseFinder):
 
 class SQLiteFinder(BaseFinder):
 
-    def __init__(self,
-                 path: Union[str, Path],
-                 table: str,
-                 ref_field: str,
-                 source_field: str
-                 ):
+    def __init__(
+        self,
+        path: Union[str, Path],
+        table: str,
+        ref_field: str,
+        source_field: str,
+    ):
         self.path = Path(path)
         self.table = table
         self.ref_field = ref_field

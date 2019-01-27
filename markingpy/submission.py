@@ -21,8 +21,6 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from types import CodeType
-
-
 from .compiler import Compiler
 from .utils import log_calls
 
@@ -32,14 +30,9 @@ Scores = namedtuple("Scores", ["raw", "total", "percentage", "formatted"])
 __all__ = ['Submission']
 
 
-
-
 class Submission:
 
-    def __init__(self,
-                 reference: str,
-                 source: str,
-                 **kwargs: Any):
+    def __init__(self, reference: str, source: str, **kwargs: Any):
         self.reference = reference
         self.compiler = Compiler()
         self.source = self.raw_source = source

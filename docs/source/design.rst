@@ -44,36 +44,39 @@ Call tests are the most basic test component. These are added using the ``add_te
 
 The first argument should be either a tuple containing the positional arguments to be used, None (if no positional arguments are to be used), or a ``Call`` namedtuple. The latter will usually be created by calling the model solution function (as above) with the desired arguments. (In the scope of the marking scheme file, calls to the model solution function - or, more precisely, the exercise object wrapping the function - will simply return a ``Call`` namedtuple containing the arguments used in the call.) 
 
-        
+Timing tests are created by calling the ``timing_test`` method of the exercise object. This method takes two positional arguments specifying a list or dictionary of test cases, and the tolerance for the tests. Again, the recommended way to add cases is to simply list calls by calling the model solution::
+
+        cases = [
+                model_solution(1, 2),
+                model_solution(3, 4),
+                model_solution(15, 16),
+                model_solution(100, 200),
+        ]
+        test_3 = model_solution.timing_test(cases, 0.2,
+                                            name='Timing test'))
+
+This will add a timing test with four cases, and a tolerance of 20%. When this test is created, the timing tests will be converted to ``TimingCase`` named tuples, which consist of the arguments and keyword arguments for each call, and the target time obtain by timing the execution of the model solution for each case.
+
+Explicit target times can be added by using a dictionary rather than a list. The keys should be a tuple of arguments and keyword arguments - such as from calling ``model_solution`` - and the target time as values. For example::
+
+        cases = {
+                model_solution(1, 2): 1,
+                model_solution(15, 16): 20,
+                model_solution(100, 200): 40,
+        }
+        test_4 = model_solution.timing_test(cases, 0.2)
+
+Custom tests can be created by writing a function decorated with the :func:`Exercise.test` decorator. The model solution function should be used within the body of this function to refer to both the model solution and the submission function during testing. The return value of this function should be a Boolean; ``True`` for a successful test, and ``False`` for an unsuccessful test. For example::
+
+        @model_solution.test
+        def test_5():
+                # Custom test function
+
+                try:
+                        out = model_solution(1, 2)
+                except OSError:  # for example
+                        return True
+                return False
 
 
-
-
-
-
-
-
-
-
-
-literal block::
-
-    from markingpy import exercise, mark_scheme
-
-    mark_scheme(
-        submission_path='submissions'
-    )
-
-    @exercise(name='Exercise one')
-    def ex_1(param):
-        """
-        Exercise one model solution.
-        """
-        pass
-
-    call_parameters = (None,) # tuple of args
-    call_kwparams = {} # dictionary of keyword args
-    ex_1.add_test_call(call_parameters, call_kwparams,
-                       name='Test name', marks=1,
-                       descr='Short description for feedback')
-
+The test objects returned in each of these cases (or the wrapped ``test_5`` function in the final case) that can be manipulated later. For example, the (display) name and description can be added, if they were not added as arguments to the creating functions.

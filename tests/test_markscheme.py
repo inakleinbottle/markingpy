@@ -94,7 +94,7 @@ def test_markscheme_run_full_marks(ms):
     assert call_args_list == [
         (('execution', []),),
         (('tests', 'Exercise'),),
-        (('style', 'Linter\nStyle score: 10 / 10'),)
+        (('style', 'Linter\nStyle score: 10 / 10'),),
     ]
     assert mock_submission.percentage == 100
 
@@ -133,6 +133,6 @@ def test_markscheme_run_no_marks(ms):
     assert call_args_list == [
         (('execution', []),),
         (('tests', 'Exercise'),),
-        (('style', 'Linter\nStyle score: 0 / 10'),)
+        (('style', 'Linter\nStyle score: 0 / 10'),),
     ]
     assert mock_submission.percentage == 0

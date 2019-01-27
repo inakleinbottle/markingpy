@@ -6,6 +6,7 @@ from markingpy import InteractionTest, Call, ExecutionContext, SuccessCriterion
 
 @pytest.fixture
 def dummy_class():
+
     class DummyClass:
 
         def __init__(self, a, b, kw=None):
@@ -15,6 +16,7 @@ def dummy_class():
 
         def method(self, repl):
             self._a = repl
+
     return DummyClass
 
 
@@ -32,13 +34,10 @@ def test_create_proxy_ns(inter_tst):
 
 def test_create_instance_proxy(inter_tst):
     proxy = inter_tst.create_instance_proxy()
-
     assert proxy.b == 2
-
     # test setattr works
     proxy.b = 3
     assert proxy.b == 3
-
     # assert that proxy does not have properties _a and _kw
     with pytest.raises(AttributeError):
         b = proxy._b
@@ -57,7 +56,6 @@ def test_success_criterion(inter_tst):
     assert isinstance(criterion, SuccessCriterion)
     assert criterion == SuccessCriterion(None, None, None, sc)
 
-
     # Test with non-keyword name
     @inter_tst.success_criterion('criterion')
     def sc2(obj):
@@ -67,7 +65,6 @@ def test_success_criterion(inter_tst):
     criterion = inter_tst.success_criteria[1]
     assert isinstance(criterion, SuccessCriterion)
     assert criterion == SuccessCriterion('criterion', None, None, sc2)
-
 
     # Test with keyword name
     @inter_tst.success_criterion(name='criterion')
@@ -99,35 +96,30 @@ def test_success_criterion(inter_tst):
     assert isinstance(criterion, SuccessCriterion)
     assert criterion == SuccessCriterion('criterion', 'descr', 1, sc5)
 
+
 def test_create_test(inter_tst):
-    ctx = inter_tst.create_test(lambda: None)
+    ctx = inter_tst.create_test( lambda: None)
     assert isinstance(ctx, ExecutionContext)
 
 
 def test_get_success(inter_tst):
     crt = SuccessCriterion(None, None, None, lambda o: o.success)
     inter_tst.success_criteria.append(crt)
-
     ctx = ExecutionContext()
     obj = mock.MagicMock()
-
     # succesful
     ctx.ran_successfully = True
     obj.success = True
     assert inter_tst.get_success(ctx, obj)
-
     # Fail
     ctx.ran_successfully = False
     assert not inter_tst.get_success(ctx, obj)
-
     ctx.ran_successfully = True
     obj.success = False
     assert not inter_tst.get_success(ctx, obj)
-
     ctx.ran_successfully = False
     obj.success = False
     assert not inter_tst.get_success(ctx, obj)
-
     obj = None
     assert not inter_tst.get_success(ctx, obj)
 
@@ -138,13 +130,7 @@ def test_run(inter_tst, dummy_class):
         obj.method(2)
 
     obj = inter_tst.run(other)
-
     assert isinstance(obj, dummy_class)
     assert obj._a == 2
     assert obj.b == 2
     assert obj._kw == None
-
-
-
-
-

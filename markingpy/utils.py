@@ -25,17 +25,14 @@ from functools import wraps
 from inspect import isfunction, Signature, Parameter, stack
 from time import time
 
-from typing import (Any, Set, Callable, Dict, Tuple, ContextManager,
-                    TYPE_CHECKING)
+from typing import (
+    Any, Set, Callable, Dict, Tuple, ContextManager, TYPE_CHECKING
+)
 
 if TYPE_CHECKING:
     from .linters import LinterReport
-
 ARGS = Tuple[Any, ...]
 KWARGS = Dict[str, Any]
-
-
-
 try:
     import resource
 except ImportError:
@@ -112,7 +109,7 @@ class TestCaseFunction:
         return self.expr
 
 
-def log_calls(level: str=None) -> Callable:
+def log_calls(level: str = None) -> Callable:
     if isfunction(level):
         fn = level
         level = logging.DEBUG
@@ -188,11 +185,7 @@ def str_format_args(args: typing.Tuple, kwargs: typing.Dict) -> str:
     return args_msg
 
 
-def time_run(
-        func: Callable,
-        args: ARGS,
-        kwargs: KWARGS
-        ) -> float:
+def time_run(func: Callable, args: ARGS, kwargs: KWARGS) -> float:
     """
     Time the running of a function.
 

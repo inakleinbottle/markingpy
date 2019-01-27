@@ -23,12 +23,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Dict
 
 if TYPE_CHECKING:
-    from . import submission
-
-
+    from .import submission
 from pylint.lint import PyLinter
 from pylint.reporters.text import TextReporter
-
 
 __all__ = ['LinterReport', 'linter']
 

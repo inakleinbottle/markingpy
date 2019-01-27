@@ -1,15 +1,15 @@
-import random
-
-import pytest
 from unittest import mock
 from collections import namedtuple
 from contextlib import redirect_stdout
 from io import StringIO
 from time import sleep
 
+import pytest
+
 from markingpy.exercises import exercise
 from markingpy import cases
 from markingpy import execution
+from markingpy import exercises
 
 Call = namedtuple('Call', ['args', 'kwargs'])
 
@@ -263,5 +263,42 @@ def test_call_test_running_funcs(call_test_func):
         assert result.mark == res
 
 
+@pytest.fixture
+def mock_exercise_func():
+    return mock.MagicMock()
+
+@pytest.fixture
+def mock_submission_func():
+    return mock.MagicMock()
+
+
+@pytest.fixture
+def mock_function_exercise(mock_exercise_func):
+    ex = mock.MagicMock(autospec=exercises.FunctionExercise)
+    ex.func = mock_exercise_func
+    return ex
+
+@pytest.fixture
+def mock_execution_context():
+    ctx = mock.MagicMock(autospec=execution.ExecutionContext)
+    return ctx
+
+
+def test_call_test_expected_error_get_success(mock_execution_context, mock_function_exercise):
+    mock_function_exercise.side_effect = lambda *a, **k: RuntimeError('bad args')
+    test = cases.CallTest(cases.Call(('bad arg',), {}), None, expects_error=RuntimeError,
+                          exercise=mock_function_exercise)
+
+    mock_execution_context.error = (RuntimeError, RuntimeError('An error occurred'), None)
+    success = test.get_success(mock_execution_context, None)
+    assert success
+
+    mock_execution_context.error = None
+    success = test.get_success(mock_execution_context, True)
+    assert not success
+
+    mock_execution_context.error = (TypeError, TypeError('A type error occurred'), None)
+    success = test.get_success(mock_execution_context, True)
+    assert not success
 
 

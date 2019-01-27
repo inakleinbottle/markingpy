@@ -23,20 +23,29 @@ from collections import namedtuple
 from functools import wraps
 from contextlib import contextmanager
 from inspect import isfunction, isclass
-from typing import (List, Union, Dict, Any, Type, Callable, Optional, Tuple,
-                    Iterable, TYPE_CHECKING)
+from typing import (
+    List,
+    Union,
+    Dict,
+    Any,
+    Type,
+    Callable,
+    Optional,
+    Tuple,
+    Iterable,
+    TYPE_CHECKING,
+)
 
-if TYPE_CHECKING:
-    from . import markscheme
 
 from .cases import Test, TimingTest, CallTest, Call
 from .utils import log_calls
 from .import cases
 
+if TYPE_CHECKING:
+    from .import markscheme
+
 ARGS = Tuple[Any, ...]
 KWARGS = Dict[str, Any]
-
-
 logger = logging.getLogger(__name__)
 INDENT = " " * 4
 __all__ = [
@@ -72,8 +81,7 @@ class ExerciseBase:
         return [r for r in _EXERCISES]
 
     @classmethod
-    def set_marking_scheme(
-            cls, marking_scheme: 'markscheme.MarkingScheme'):
+    def set_marking_scheme(cls, marking_scheme: 'markscheme.MarkingScheme'):
         if not NO_ADD_EXERCISES:
             cls._marking_scheme = marking_scheme
 
@@ -122,12 +130,13 @@ class Exercise(ExerciseBase):
     """
 
     def __init__(
-        self, function_or_class: Union[Callable, Type],
-            name: Optional[str]=None,
-            descr: Optional[str]=None,
-            marks: Optional[int]=None,
-            submission_name: Optional[str]=None,
-            **args: Any
+        self,
+        function_or_class: Union[Callable, Type],
+        name: Optional[str] = None,
+        descr: Optional[str] = None,
+        marks: Optional[int] = None,
+        submission_name: Optional[str] = None,
+        **args: Any,
     ):
         super().__init__()
         self.number = self.get_number()
@@ -171,7 +180,7 @@ class Exercise(ExerciseBase):
                 )
 
         self.marks = total_marks
-        ns = {self.func.__name__: self.func}
+        ns = {self.submission_name: self.func}
         result = self.run(ns)
         if not result.total_marks == self.marks:
             raise ExerciseError(
@@ -210,9 +219,7 @@ class Exercise(ExerciseBase):
         return self.exc_func(*args, **kwargs)
 
     @contextmanager
-    def set_to_submission(self,
-                          submission_func: Union[Callable, Type]
-                          ):
+    def set_to_submission(self, submission_func: Union[Callable, Type]):
         """
         Set the execution function to the submission function or class
         :param submission_func: Function or class to set
@@ -228,11 +235,13 @@ class Exercise(ExerciseBase):
     def total_marks(self) -> int:
         return sum(t.marks for t in self.tests)
 
-    def add_test(self, *args,
-                 name: Optional[str]=None,
-                 cls: Type[cases.BaseTest]=None,
-                 **params: Any
-                 ) -> cases.BaseTest:
+    def add_test(
+        self,
+        *args,
+        name: Optional[str] = None,
+        cls: Type[cases.BaseTest] = None,
+        **params: Any,
+    ) -> cases.BaseTest:
         """
         Add a new test to the exercise.
 
@@ -252,10 +261,12 @@ class Exercise(ExerciseBase):
         return test
 
     @log_calls("info")
-    def test(self, name: Optional[str]=None,
-             cls: Optional[Type[cases.BaseTest]]=None,
-             **kwargs: Any
-             ) -> cases.BaseTest:
+    def test(
+        self,
+        name: Optional[str] = None,
+        cls: Optional[Type[cases.BaseTest]] = None,
+        **kwargs: Any,
+    ) -> cases.BaseTest:
         """
         Add a new test to the exercise by decorating a function. The function
         should return `True` for a successful test and `False` for a failed
@@ -276,17 +287,18 @@ class Exercise(ExerciseBase):
             name = None
 
         def decorator(func):
-            return self.add_test(func, name=name, cls=cls, **kwargs)
+            return self.add_test(func, cls=cls, **kwargs)
 
         if name is None:
             return decorator
 
         elif isfunction(name):
             return decorator(name)
+        raise TypeError('Custom test must decorate a function.')
 
-    def get_submission_function(self,
-                                namespace: Dict[str, Any]
-                                ) -> Union[Callable, Type]:
+    def get_submission_function(
+        self, namespace: Dict[str, Any]
+    ) -> Union[Callable, Type]:
         return namespace.get(self.submission_name, None)
 
     def format_feedback(self, results: Any) -> ExerciseFeedback:
@@ -328,9 +340,12 @@ class ExerciseFunctionProxy:
         raise NotImplementedError
 
     @log_calls("info")
-    def add_test_call(self, call_params: ARGS=None, call_kwparams: KWARGS=None,
-                      **kwargs: Any
-                      ) -> cases.BaseTest:
+    def add_test_call(
+        self,
+        call_params: ARGS = None,
+        call_kwparams: KWARGS = None,
+        **kwargs: Any,
+    ) -> cases.BaseTest:
         """
         Add a call test to the exercise.
 
@@ -347,11 +362,12 @@ class ExerciseFunctionProxy:
         )
 
     @log_calls("info")
-    def timing_test(self,
-                    timing_cases: Union[Dict[Call, float], Iterable[Call]],
-                    tolerance: float=0.2,
-                    **kwargs: Any
-                    ) -> cases.BaseTest:
+    def timing_test(
+        self,
+        timing_cases: Union[Dict[Call, float], Iterable[Call]],
+        tolerance: float = 0.2,
+        **kwargs: Any,
+    ) -> cases.BaseTest:
         """
         Test the timing of a submission against the model solution.
 
@@ -378,15 +394,14 @@ class FunctionExercise(Exercise, ExerciseFunctionProxy):
     set_function = Exercise.set_to_submission
 
 
+
+
 # noinspection PyProtectedMember
 class ExerciseInstance:
 
-    def __init__(self,
-                 parent: 'ClassExercise',
-                 cls: Type,
-                 *args: Any,
-                 **kwargs: Any
-                 ):
+    def __init__(
+        self, parent: 'ClassExercise', cls: Type, *args: Any, **kwargs: Any
+    ):
         self.__call_args = Call(args, kwargs)
         self.__parent = parent
         self.__cls = cls
@@ -403,24 +418,21 @@ class ExerciseInstance:
                 self.__cls, self.__parent, self.__call_args, item
             )
 
+
 class ExerciseMethodProxy(ExerciseFunctionProxy):
 
-    def __init__(self,
-                 cls: Type,
-                 parent: 'ClassExercise',
-                 inst_call: Call,
-                 name: str):
+    def __init__(
+        self, cls: Type, parent: 'ClassExercise', inst_call: Call, name: str
+    ):
         wraps(getattr(cls, name))(self)
         self.name = name
         self.parent = parent
         self.cls = cls
         self.inst_call = inst_call
 
-    def add_test(self,
-                 *args: Any,
-                 cls: Optional[Type]=None,
-                 **kwargs: Any
-                 ) -> cases.BaseTest:
+    def add_test(
+        self, *args: Any, cls: Optional[Type] = None, **kwargs: Any
+    ) -> cases.BaseTest:
         if cls is cases.CallTest:
             return self.parent.method_test_call(
                 self.name,
@@ -479,10 +491,10 @@ class ClassExercise(Exercise):
     def method_test_call(
         self,
         method: str,
-        call_params: Optional[ARGS]=None,
-        call_kwparams: Optional[KWARGS]=None,
-        inst_with_args: Optional[ARGS]=None,
-        inst_with_kwargs: Optional[KWARGS]=None,
+        call_params: Optional[ARGS] = None,
+        call_kwparams: Optional[KWARGS] = None,
+        inst_with_args: Optional[ARGS] = None,
+        inst_with_kwargs: Optional[KWARGS] = None,
         **kwargs: Any,
     ) -> cases.MethodTest:
         """
@@ -515,9 +527,9 @@ class ClassExercise(Exercise):
     def method_timing_test(
         self,
         timing_cases: Union[Dict[Call, float], Iterable[Call]],
-        tolerance: float=0.2,
-        inst_with_args: Optional[ARGS]=None,
-        inst_with_kwargs: Optional[KWARGS]=None,
+        tolerance: float = 0.2,
+        inst_with_args: Optional[ARGS] = None,
+        inst_with_kwargs: Optional[KWARGS] = None,
         **kwargs: Any,
     ) -> cases.MethodTimingTest:
         return self.add_test(
@@ -557,10 +569,9 @@ class InteractionExercise(Exercise):
     def __init__(self, environment: Type, **kwargs: Any):
         super().__init__(environment, **kwargs)
 
-    def new_test(self,
-                 instantiation_call: Call,
-                 **kwargs: Any
-                 ) -> cases.InteractionTest:
+    def new_test(
+        self, instantiation_call: Call, **kwargs: Any
+    ) -> cases.InteractionTest:
         """
         Create a new test.
 
@@ -574,11 +585,11 @@ class InteractionExercise(Exercise):
 
 
 def exercise(
-        name: Optional[str]=None,
-        cls: Type[Exercise]=None,
-        interactive: bool=False,
-        **args: Any
-        ) -> Exercise:
+    name: Optional[str] = None,
+    cls: Type[Exercise] = None,
+    interactive: bool = False,
+    **args: Any,
+) -> Exercise:
     """
     Create a new exercise using this function or class as the model solution.
 

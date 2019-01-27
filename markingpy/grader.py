@@ -26,10 +26,10 @@ import tempfile
 import traceback
 
 from pathlib import Path
-from typing import (Type, )
+from typing import ( Type,)
 
-from . import markscheme
-from . import submission
+from .import markscheme
+from .import submission
 
 logger = logging.getLogger(__name__)
 __all__ = ['Grader']
@@ -56,11 +56,7 @@ class Grader:
         Run the grader tests on a submission.
         """
         self.mark_scheme.run(sub)
-        self.db.insert(
-            sub.reference,
-            sub.percentage,
-            sub.generate_report(),
-        )
+        self.db.insert(sub.reference, sub.percentage, sub.generate_report())
 
     def grade_submissions(self):
         """
@@ -86,7 +82,8 @@ class Grader:
         os.chdir(self.path)
         return self
 
-    def __exit__(self, err_type: Type[Exception], err_val: Type[Exception],
-                 tb:Type):
+    def __exit__(
+        self, err_type: Type[Exception], err_val: Type[Exception], tb: Type
+    ):
         for fn in self.at_exit:
             fn()

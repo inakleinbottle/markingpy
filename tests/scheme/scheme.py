@@ -13,7 +13,6 @@ def add(a: int, b: int) -> int:
     """
     Add two integers together to get an integer.
     """
-
     return a + b
 
 
@@ -29,7 +28,7 @@ add.timing_test(
 )
 
 
-#@add.test(marks=2, descr="Test Type enforcement")
+# @add.test(marks=2, descr="Test Type enforcement")
 def test_type_enforcement():
     """
     Test that the function only accepts integer inputs and

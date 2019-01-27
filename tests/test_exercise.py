@@ -10,8 +10,9 @@ from typing import Iterable
 from math import sqrt
 
 import markingpy
-from markingpy.exercises import ( exercise, Exercise, ExerciseFeedback)
-import markingpy.cases
+from markingpy import exercises
+from markingpy.exercises import (exercise, Exercise, ExerciseFeedback)
+from markingpy import cases
 
 Call = namedtuple('Call', ['args', 'kwargs'])
 
@@ -232,3 +233,101 @@ def test_many_call_tests_ex(calltest_cases, multiple_test_abs_ex):
     test_func.assert_called()
     assert test_func.call_args_list == calltest_cases
 
+
+@pytest.fixture
+def exercise_target():
+    return mock.MagicMock()
+
+
+@pytest.fixture
+def exercise_fixture(exercise_target):
+    return Exercise(exercise_target,
+                    name='exercise',
+                    descr='description',
+                    marks=5,
+                    submission_name='sub_func')
+
+
+def test_common_attributes(exercise_fixture):
+    assert exercise_fixture.name == 'exercise'
+    assert exercise_fixture.descr == 'description'
+    assert exercise_fixture.marks == 5
+    assert exercise_fixture.submission_name == 'sub_func'
+
+
+def test_get_name(exercise_fixture, exercise_target):
+    exercise_target.__name__ = 'target'
+    assert exercise_fixture.get_name() == (
+        f'Exercise {exercise_fixture.get_number()}: target'
+    )
+
+
+def test_unlocked_exercise_call_record(exercise_fixture):
+    out = exercise_fixture('arg1', 'arg2', kw='arg3')
+    assert isinstance(out, cases.Call)
+    assert out.args == ('arg1', 'arg2')
+    assert out.kwargs == {'kw': 'arg3'}
+
+
+def test_exercise_lock(exercise_fixture, exercise_target):
+    exercise_fixture.lock()
+    assert exercise_fixture.exc_func is exercise_target
+
+
+def test_total_marks_property(exercise_fixture):
+    mcks = [mock.MagicMock(marks=i) for i in range(1, 4)]
+    exercise_fixture.tests = mcks
+
+    assert exercise_fixture.total_marks == 6
+
+
+def test_exercise_validation(exercise_fixture, exercise_target):
+    with pytest.raises(exercises.ExerciseError):
+        exercise_fixture.validate()
+
+    mcks = [mock.MagicMock(marks=i) for i in range(2, 4)]
+    exercise_fixture.tests = mcks
+
+    result_mock = mock.MagicMock(marks=2,
+                                 total_marks=2,
+                                 feedback='',
+                                 per_test=[])
+    exercise_fixture.run = mock.MagicMock(return_value=result_mock)
+    ns = {'sub_func': exercise_target}
+
+    with pytest.raises(exercises.ExerciseError):
+        exercise_fixture.validate()
+
+    exercise_fixture.run.assert_called_with(ns)
+
+    result_mock.total_marks = 5
+
+    with pytest.raises(exercises.ExerciseError):
+        exercise_fixture.validate()
+
+    result_mock.marks = 5
+    exercise_fixture.validate()
+
+def test_get_submission_func(exercise_fixture):
+    def mck():
+        pass
+    ns = {'sub_func': mck}
+    assert exercise_fixture.get_submission_function(ns) is mck
+
+    ns = {'sub_func1': mck}
+    assert exercise_fixture.get_submission_function(ns) is None
+
+
+def test_custom_test_decorator(exercise_fixture):
+    def func():
+        pass
+    wrapped = exercise_fixture.test(func)
+    assert isinstance(wrapped, cases.Test)
+
+    wrapped = exercise_fixture.test('name')(func)
+    assert isinstance(wrapped, cases.Test)
+    assert wrapped.name == 'name'
+    assert wrapped.test_func is func
+
+    with pytest.raises(TypeError):
+        exercise_fixture.test(True)

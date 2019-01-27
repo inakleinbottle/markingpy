@@ -116,19 +116,19 @@ class Compiler:
         self,
         source: str,
         *,
-        filename: str="<input>",
-        mode: str="exec",
-        flags: int=0,
-        dont_inherit: bool=False,
-        optimize: int= -1,
+        filename: str = "<input>",
+        mode: str = "exec",
+        flags: int = 0,
+        dont_inherit: bool = False,
+        optimize: int = -1,
     ):
         return self.compile_source(
             source, filename, mode, flags, dont_inherit, optimize
         )
 
     def remove_line(
-            self, chunk:Chunk, lineno: int, reason: Exception
-            ) -> Tuple[Chunk, Chunk]:
+        self, chunk: Chunk, lineno: int, reason: Exception
+    ) -> Tuple[Chunk, Chunk]:
         """
         Remove a line from the source.
         """
@@ -186,8 +186,13 @@ class Compiler:
             self.to_process.append(after)
 
     def compile_source(
-        self, source:str , filename: str, mode: str, flags: int,
-            dont_inherit: bool, optimize: int
+        self,
+        source: str,
+        filename: str,
+        mode: str,
+        flags: int,
+        dont_inherit: bool,
+        optimize: int,
     ) -> Any:
         """
         Compile the source ignoring any compilation errors.

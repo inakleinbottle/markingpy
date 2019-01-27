@@ -1,3 +1,19 @@
+#      Markingpy automatic grading tool for Python code.
+#      Copyright (C) 2019 Sam Morley
+#
+#      This program is free software: you can redistribute it and/or modify
+#      it under the terms of the GNU General Public License as published by
+#      the Free Software Foundation, either version 3 of the License, or
+#      (at your option) any later version.
+#
+#      This program is distributed in the hope that it will be useful,
+#      but WITHOUT ANY WARRANTY; without even the implied warranty of
+#      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#      GNU General Public License for more details.
+#
+#      You should have received a copy of the GNU General Public License
+#      along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
 import builtins
 import hashlib
 import importlib
@@ -17,14 +33,24 @@ from builtins import (__import__,
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
-from typing import (Optional, Type, Dict, Tuple, List, Any, Callable,
-                    TYPE_CHECKING, Union, ContextManager)
+from typing import (
+    Optional,
+    Type,
+    Dict,
+    Tuple,
+    List,
+    Any,
+    Callable,
+    TYPE_CHECKING,
+    Union,
+    ContextManager,
+)
 
-from . import finders
-from . import magic
-from . import storage
-from . import submission
-from . import exercises
+from .import finders
+from .import magic
+from .import storage
+from .import submission
+from .import exercises
 
 from .config import GLOBAL_CONF
 from .exercises import Exercise, ExerciseError
@@ -32,16 +58,11 @@ from .linters import linter
 from .utils import build_style_calc, log_calls
 from .storage import get_db
 
-
 if TYPE_CHECKING:
     import importlib.machinery
-
 ARGS = Tuple[Any, ...]
 KWARGS = Dict[str, Any]
-
-
 logger = logging.getLogger(__name__)
-
 __all__ = [
     'MarkingScheme',
     'NotAMarkSchemeError',
@@ -50,9 +71,8 @@ __all__ = [
     'mark_scheme',
     'get_markscheme',
     'set_markscheme',
-    'import_markscheme'
+    'import_markscheme',
 ]
-
 _MARKSCHEME = None
 
 
@@ -116,21 +136,21 @@ def mark_scheme(**params: Any) -> 'MarkschemeConfig':
     return conf
 
 
-def get_spec_path_or_module(name: Union[str, Path],
-                            modname: str='markingpy_marking_scheme'
-                            ) ->  Optional[importlib.machinery.ModuleSpec]:
+def get_spec_path_or_module(
+    name: Union[str, Path], modname: str = 'markingpy_marking_scheme'
+) -> Optional[importlib.machinery.ModuleSpec]:
     path = Path(name).resolve()
     if path.exists():
-        return importlib.util.spec_from_file_location(
-                    modname,
-                    location=path
-                )
+        return importlib.util.spec_from_file_location(modname, location=path)
 
     spec = importlib.util.find_spec(name)
     if spec is None:
         return spec
+
     spec.name = modname
     return spec
+
+
 
 
 # noinspection PyNoneFunctionAssignment
@@ -190,6 +210,7 @@ class WrappedModule:
     def __getattr__(self, item: str) -> Any:
         if not item in self.__dict__:
             return getattr(self.mod, item)
+
         raise AttributeError(f'{self.__name__} has no attribute {item}')
 
     def __setattr__(self, name: str, val: Any):
@@ -211,12 +232,14 @@ class ControlledFunction:
         self.allowed = True
         try:
             yield
+
         finally:
             self.allowed = False
 
     def __call__(self, *args: Any, **kwargs: Any):
         if not self.allowed:
             raise ForbiddenFunctionCall
+
         self.func(*args, **kwargs)
 
 
@@ -240,14 +263,15 @@ class Importer:
     access to certain attributes in a module.
     """
 
-    def __init__(self,
-                 namespace: KWARGS,
-                 allowed: Optional[List[str]]=None,
-                 forbidden: Optional[List[str]]=None,
-                 import_: Callable=__import__,
-                 eval_: Optional[Callable]=None,
-                 exec_: Optional[Callable]=None
-                 ):
+    def __init__(
+        self,
+        namespace: KWARGS,
+        allowed: Optional[List[str]] = None,
+        forbidden: Optional[List[str]] = None,
+        import_: Callable = __import__,
+        eval_: Optional[Callable] = None,
+        exec_: Optional[Callable] = None,
+    ):
         self.namespace = namespace
         self.allowed = allowed if allowed else []
         self.forbidden = forbidden if forbidden else []
@@ -267,21 +291,20 @@ class Importer:
         self.namespace['__builtins__']['__import__'] = __import__
         try:
             yield
+
         finally:
             self.namespace['__builtins__']['__import__'] = self
 
     def __call__(self, name: str, *args: Any) -> types.ModuleType:
         if self._is_forbidden(name):
-            raise ForbiddenImportError(
-                f'Importing {name} is forbidden'
-            )
-        if self._is_not_allowed(name):
-            warnings.warn(
-                f'User imported module {name}'
-            )
+            raise ForbiddenImportError(f'Importing {name} is forbidden')
 
+        if self._is_not_allowed(name):
+            warnings.warn(f'User imported module {name}')
         with self.eval_.restore(), self.exec_.restore(), self.restore():
             return self.import_(name, *args)
+
+
 
 
 # noinspection PyUnresolvedReferences
@@ -322,23 +345,22 @@ class MarkingScheme(magic.MagicBase):
     preload_modules: split_commas
 
     def __init__(
-            self,
-            unique_id: Optional[str]=None,
-            marks: Optional[int]=None,
-            style_formula: Optional[str]=None,
-            style_marks: int=10,
-            score_style: str="basic",
-            submission_path: Optional[str]=None,
-            finder: Optional[Type[finders.BaseFinder]]=None,
-            marks_db: Optional[str]=None,
-            allowed_modules: Optional[str]=None,
-            forbidden_modules:  Optional[str]=None,
-            preload_modules:  Optional[str]=None,
-            **kwargs: Any
-            ):
+        self,
+        unique_id: Optional[str] = None,
+        marks: Optional[int] = None,
+        style_formula: Optional[str] = None,
+        style_marks: int = 10,
+        score_style: str = "basic",
+        submission_path: Optional[str] = None,
+        finder: Optional[Type[finders.BaseFinder]] = None,
+        marks_db: Optional[str] = None,
+        allowed_modules: Optional[str] = None,
+        forbidden_modules: Optional[str] = None,
+        preload_modules: Optional[str] = None,
+        **kwargs: Any,
+    ):
         # Unique identifier - hash of path with user
         self.unique_id = unique_id
-
         # Set up variables
         self.marks = marks
         self.style_marks = style_marks
@@ -346,20 +368,16 @@ class MarkingScheme(magic.MagicBase):
         self.allowed_modules = allowed_modules
         self.forbidden_modules = forbidden_modules
         self.preload_modules = preload_modules
-
         # set up timing
         self.start_time = 0.0
         self.last_marked_time = 0.0
         self.timing_stats = []
-
         # Set the exercises
         self.exercises = Exercise.get_all_exercises()
         Exercise.set_marking_scheme(self)
-
         # Set up the linter
         self.linter = linter
         self.style_calc = build_style_calc(style_formula)
-
         # Set up the finder for loading submissions.
         if finder is None and submission_path is None:
             self.finder = finders.DirectoryFinder(Path(".", "submissions"))
@@ -376,7 +394,6 @@ class MarkingScheme(magic.MagicBase):
 
         # Database setup
         self.marks_db = Path(marks_db).expanduser()
-
         # Unused parameters
         for k in kwargs:
             warnings.warn(f"Unrecognised option {k}")
@@ -410,8 +427,8 @@ class MarkingScheme(magic.MagicBase):
             except ExerciseError as err:
                 logger.error(f'Failed to validate {str(ex)}')
                 raise MarkingSchemeError from err
-            logger.debug(f'Validation of {ex.name}: Passed')
 
+            logger.debug(f'Validation of {ex.name}: Passed')
         if self.marks is not None:
             # If validation marks parameter provided, validate the mark totals
             marks_from_ex = sum(ex.marks for ex in self.exercises)
@@ -422,7 +439,7 @@ class MarkingScheme(magic.MagicBase):
                     f'Total marks available in marking scheme '
                     f'({total_marks_for_ms}) do not match the marks allocated '
                     f'in the marking scheme configuration ({self.marks})'
-                    )
+                )
 
         logger.info(f'Marking validation: Passed')
 
@@ -443,7 +460,7 @@ class MarkingScheme(magic.MagicBase):
         """
         yield from self.finder.get_submissions()
 
-    def set_unique_id(self, module_name: str='markingpy_marking_scheme'):
+    def set_unique_id(self, module_name: str = 'markingpy_marking_scheme'):
         """
         Set the unique id for this marking scheme.
 
@@ -455,8 +472,9 @@ class MarkingScheme(magic.MagicBase):
         if not self.unique_id:
             mod = importlib.import_module(module_name)
             self.unique_id = hashlib.md5(
-                        inspect.getsource(mod).encode()
-                    ).hexdigest()
+                inspect.getsource(mod).encode()
+            ).hexdigest(
+            )
 
     def get_db(self) -> storage.Database:
         """
@@ -496,7 +514,9 @@ class MarkingScheme(magic.MagicBase):
             )
 
     @contextmanager
-    def sandbox(self, ns: KWARGS, sub: submission.Submission) -> ContextManager[None]:
+    def sandbox(
+        self, ns: KWARGS, sub: submission.Submission
+    ) -> ContextManager[None]:
         """
         Create a sandbox to exec submission code in a context manager. This
         replaces ``sys.modules`` with a chain map so that imported modules will
@@ -506,11 +526,13 @@ class MarkingScheme(magic.MagicBase):
         try:
             with warnings.catch_warnings(record=True) as warns:
                 yield
+
                 for w in warns:
                     print(w.message)
                 sub.add_feedback('execution', warns)
         except KeyboardInterrupt:
             raise  # reraise keyboard interrupts
+
         except SystemExit as err:
             # There is no particular reason why a submission should raise a
             # system exit, so we catch this and emit a more standard error.
@@ -527,25 +549,22 @@ class MarkingScheme(magic.MagicBase):
         :return: namespace ``dict``
         """
         ns = {'__builtins__': builtins.__dict__.copy()}
-
         c_eval = ControlledFunction(b_eval)
         c_exec = ControlledFunction(b_exec)
-
-        importer = Importer(ns,
-                            allowed=self.allowed_modules,
-                            forbidden=self.forbidden_modules,
-                            eval_=c_eval,
-                            exec_=c_exec)
-
+        importer = Importer(
+            ns,
+            allowed=self.allowed_modules,
+            forbidden=self.forbidden_modules,
+            eval_=c_eval,
+            exec_=c_exec,
+        )
         ns['__builtins__']['__import__'] = importer
         ns['__builtins__']['eval'] = c_eval
         ns['__builtins__']['exec'] = c_exec
-
         # noinspection PyTypeChecker
         ns['sys'] = WrappedModule(sys)
         for mod in self.preload_modules:
             ns[mod] = WrappedModule(importlib.import_module(mod))
-
         return ns
 
     @log_calls
@@ -557,18 +576,15 @@ class MarkingScheme(magic.MagicBase):
         """
         if not self.start_time:
             self.start_time = self.last_marked_time = time.time()
-
         # Generate the submission functions by executing into a prepared
         # namespace.
         code = sub.compile()
         ns = self.prepare_namespace()
         with self.sandbox(ns, sub):
-            exec(code, ns)
-
+            exec (code, ns)
         score = 0
         total_score = 0
         report = []
-
         # Run tests
         for mark, total_marks, feedback, _ in (
             ex.run(ns) for ex in self.exercises
@@ -577,7 +593,6 @@ class MarkingScheme(magic.MagicBase):
             total_score += total_marks
             report.append(feedback)
         sub.add_feedback("tests", "\n".join(report))
-
         lint_report = self.linter(sub)
         style_score = round(self.style_calc(lint_report) * self.style_marks)
         score += style_score
@@ -587,11 +602,9 @@ class MarkingScheme(magic.MagicBase):
             f"Style score: {style_score} / {self.style_marks}",
         ]
         sub.add_feedback("style", "\n".join(style_feedback))
-
         # Calculate scores
         sub.percentage = round(100 * score / total_score)
         sub.score = self.format_return(score, total_score)
-
         # Timing statistics
         finish_time = time.time()
         elapsed = finish_time - self.last_marked_time
