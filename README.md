@@ -3,6 +3,8 @@ Tool for grading a directory of python submissions using a scheme file containin
 
 [![Build Status](https://travis-ci.com/inakleinbottle/markingpy.svg?branch=master)](https://travis-ci.com/inakleinbottle/markingpy) 
 
+Read the full documentation at [https://markingpy.readthedocs.io](markingpy.readthedocs.io).
+
 ## Installation
 Markingpy should be installed using the pip installation tool.
 
@@ -14,14 +16,14 @@ pip install markingpy
 There are two steps to using markingpy. First is to create the marking scheme file, which should be of the following form:
 
 ```python
-from markingpy import mark_scheme, exercise
+from markingpy import mark_scheme, exercise, PyLintChecker
 
 # If you want to use timing tests, use 
 from markingpy import TimingCase
 
 # Initialise mark scheme configuration.
 ms = mark_scheme(
-	style_marks=10, # Number of marks for coding style
+    linter=PyLintChecker(),  # add a linter to the marking process
 	submissions_path='submissions' # Directory to search for submissions
 )
 
@@ -48,7 +50,7 @@ ex_1_function.timing_test(cases, marks=2)
 
 
 @ex_1_function.test
-def custom_test()
+def custom_test():
 	"""
 	Define a custom test. This test determines whether the
 	submission function does any type checking during
@@ -60,7 +62,7 @@ def custom_test()
 	"""
 	
 	# Use the function ex_1_function in the test
-	# this will be replaced by the sumbission function
+	# this will be replaced by the submission function
 	# during testing
 	try:
 		out = ex_1_function(1.0, 2.0)
@@ -82,25 +84,40 @@ which will dump feedback files (.txt) into *directory* for each submission.
 ## Development setup
 Clone the repository and run ``make install``. Markingpy uses ``pipenv`` to handle its dependencies.
 
+## Additional Disclaimer
+This is my first Python package that I have "released" (i.e. put on PyPI), and I would be grateful for any feedback and constructive criticisms. Contributions are certainly welcome in all forms; see below.
+
+## Contributing
+
+1. Fork it (<https://github.com/inakleinbottle/markingpy/fork>)
+2. Create your feature branch (`git checkout -b feature/name`)
+3. Commit your changes (`git commit -m 'Add some feature')
+4. Push to the branch (`git push origin feature/name`)
+5. Create a new Pull Request.
 
 ## Release History
+
+ * 1.0.0
+    * Reworked grader system. Tests can now be run in separate processes to provide better isolation.
+    * Reworked command line interface.
+    * Reorganised and improved test suite.
+    * Greatly simplified marking scheme creation and exercise association.
+
+ * 0.2.0
+	* Added support to tests on arbitrary objects and their methods.
+	* Various improvements to the code base. Added descriptor support
+	  for test classes and exercise classes.
+	* Expanded the documentation.
+	* Implemented finder system for locating submissions, which currently
+	  supports loading submissions from directory (as before) and SQLite 
+	  databases. Planned support for server loading.
 
  * 0.1.0
 	* First release
 
 ## Meta
 
-Sam Morley - sam@inakleinbottle.com
+Sam Morley - sam@inakleinbottle.com - [https://inakelinbottle.com](https://inakleinbottle.com)
 
 Distributed under the GPLV3 license. See ``LICENSE`` for more information.
-
-[https://inakelinbottle.com](https://inakleinbottle.com)
-
-## Contributing
-
-1. Fork it (<https://github.com/inakleinbottle/markingpy/fork>)
-2. Create your feature branch (`git checkout -b feature/name`)
-3. Commit your changes (`git commit -am 'Add some feature')
-4. Push to the branch (`git push origin feature/name`)
-5. Create a new Pull Request.
 

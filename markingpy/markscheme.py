@@ -1,102 +1,145 @@
+#      Markingpy automatic grading tool for Python code.
+#      Copyright (C) 2019 University of East Anglia
+#
+#      This program is free software: you can redistribute it and/or modify
+#      it under the terms of the GNU General Public License as published by
+#      the Free Software Foundation, either version 3 of the License, or
+#      (at your option) any later version.
+#
+#      This program is distributed in the hope that it will be useful,
+#      but WITHOUT ANY WARRANTY; without even the implied warranty of
+#      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#      GNU General Public License for more details.
+#
+#      You should have received a copy of the GNU General Public License
+#      along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#
+import importlib
+import importlib.util
 import logging
 import warnings
-import getpass
-import hashlib
-from contextlib import contextmanager
+
+from inspect import isclass, isfunction
 from pathlib import Path
+from typing import ( Optional, Type, Dict, Tuple, Any, TYPE_CHECKING, Union)
 
-from .config import GLOBAL_CONF
-from .exercise import Exercise
-from .linter import linter
-from .utils import build_style_calc, log_calls
-from .storage import get_db
+from .import finders
+from .import storage
+from .import grader as _grader
+from .import execution
+from .import exercises
 
+from .utils import log_calls
+
+if TYPE_CHECKING:
+    import importlib.machinery
+    from .import syntax
+ARGS = Tuple[Any, ...]
+KWARGS = Dict[str, Any]
 logger = logging.getLogger(__name__)
+__all__ = ['MarkingScheme', 'NotAMarkSchemeError', 'MarkingSchemeError']
 
 
 class NotAMarkSchemeError(Exception):
     pass
 
 
-def mark_scheme(**params):
-    """
-    Create a marking scheme config.py object.
-
-    :param params:
-    :return:
-    """
-    conf = dict(GLOBAL_CONF["markscheme"])
-    conf.update(**params)
-    return MarkschemeConfig(**conf)
-
-
-@log_calls
-def import_markscheme(path):
-    """
-    Import the marking scheme from path.
-
-    :param path: Path to import
-    :return: markscheme
-    """
-    if not path.name.endswith('.py'):
-        raise NotAMarkSchemeError
-
-    with open(path, "rt") as f:
-        source = f.read()
-    code = compile(source, path, "exec")
-    ns = {}
-    exec(code, ns)
-
-    exercises = [ex for ex in ns.values() if isinstance(ex, Exercise)]
-    try:
-        config = [
-            cf for cf in ns.values() if isinstance(cf, MarkschemeConfig)
-        ][0]
-    except IndexError:
-        if not exercises:
-            raise NotAMarkSchemeError
-        config = MarkschemeConfig()
-    return MarkingScheme(path, exercises, **config)
-
-
-class MarkschemeConfig(dict):
+class MarkingSchemeError(Exception):
     pass
 
 
+def get_spec_path_or_module(
+    name: Union[str, Path], modname: str = 'markingpy_marking_scheme'
+) -> Optional[importlib.machinery.ModuleSpec]:
+    path = Path(name).resolve()
+    if path.exists():
+        return importlib.util.spec_from_file_location(modname, location=path)
+
+    spec = importlib.util.find_spec(name)
+    if spec is None:
+        return spec
+
+    spec.name = modname
+    return spec
+
+
+class SubmissionLoadError(Exception):
+    pass
+
+
+
+
+# noinspection PyUnresolvedReferences
 class MarkingScheme:
     """
     Marking scheme class.
+
+    :param marks: Total marks available for this coursework. If provided,
+        this is used to validate the markscheme.
+    :type marks: int
+    :param submission_path:
+        Path to submissions. See note below.
+    :param finder: :class:`markingpy.finders.BaseFinder` instance that
+        should be used to generate submissions. The *finder* option takes
+        precedence over *submission path* if provided. If neither is provided,
+        the default ::
+
+            markingpy.finders.DirectoryFinder('submissions')
+
+        is used.
+    :param style_marks: Number of marks available for coding style.
+    :param style_formula: Formula used to generate a score from the linter
+        report.
+    :param score_style: Formatting style for marks to be displayed in feedback.
+        Can be a choice of one of the builtin options: 'basic' (default);
+        'percentage'; 'marks/total'; 'all' marks/total (percentage).
+        Alternatively, a format string can be provided with the variables
+        *mark*, *total*, and *percentage*. For example, the 'all' builtin is
+        equivalent to ``'{mark}/{total} ({percentage})'``.
+    :param marks_db: Path to database to store submission results and feedback.
     """
 
     def __init__(
         self,
-        path,
-        exercises,
-        style_formula=None,
-        style_marks=10,
-        score_style="basic",
-        submission_path=None,
-        marks_db=None,
-        **kwargs
+        marks: Optional[int] = None,
+        score_style: str = "basic",
+        grader=None,
+        submission_path: Optional[str] = None,
+        finder: Optional[finders.BaseFinder] = None,
+        linter: Optional['syntax.CodeStyleCheckerABC'] = None,
+        marks_db: Optional[storage.StorageABC] = None,
+        preload_modules: Optional[list] = None,
+        **kwargs: Any,
     ):
-        self.path = path
-        content = f'{str(path)},{getpass.getuser()}'.encode()
-        self.unique_id = hashlib.md5(content).hexdigest()
-        logger.info('The unique identifier for this '
-                    f'markscheme is {self.unique_id}')
-        self.exercises = exercises
-        self.style_marks = style_marks
+        # Set up variables
+        self.marks = marks
         self.score_style = score_style
+        self.preload_modules = preload_modules if preload_modules else []
+        if marks_db is None:
+            marks_db = storage.CSVStorageDB(Path("marks.csv"))
+        self.db = marks_db
+        # Initialise exercise list
+        self.exercises = []
+        # set up the grader
+        self.grader = grader if grader else _grader.SimpleGrader()
+        # Set up the linter - can be None
         self.linter = linter
-        self.style_calc = build_style_calc(style_formula)
-        self.submission_path = submission_path
-        self.marks_db = Path(marks_db).expanduser()
-
+        # Set up the finder for loading submissions.
+        if finder is None and submission_path is None:
+            self.finder = finders.DirectoryFinder(Path(".", "submissions"))
+        elif finder is None and submission_path:
+            pth = Path(submission_path).resolve()
+            self.finder = finders.DirectoryFinder(pth)
+        elif isinstance(finder, finders.BaseFinder):
+            self.finder = finder
+        else:
+            self.finder = None
         # Unused parameters
         for k in kwargs:
             warnings.warn(f"Unrecognised option {k}")
 
-    def update_config(self, args):
+    def update_config(self, args: KWARGS):
         for k, v in args.items():
             if v is None:
                 continue
@@ -106,25 +149,62 @@ class MarkingScheme:
 
             setattr(self, k, v)
 
+    def validate(self):
+        """
+        Validate the marking scheme.
+
+        Check that the marking scheme is valid by running the tests against
+        the model solutions. The model solutions must attain maximum marks
+        in order to be deemed valid.
+
+        :raises: :class:`MarkingSchemeError` on validation failure.
+        """
+        logger.info('Validating Markscheme')
+        for ex in self.exercises:
+            # ExerciseError raised if any exercise fails to validate
+            # This also locks all exercises into submission mode.
+            try:
+                ex.validate()
+            except exercises.ExerciseError as err:
+                logger.error(f'Failed to validate {str(ex)}')
+                raise MarkingSchemeError from err
+
+            logger.debug(f'Validation of {ex.name}: Passed')
+        if self.marks is not None:
+            # If validation marks parameter provided, validate the mark totals
+            marks_from_ex = sum(ex.marks for ex in self.exercises)
+            style_marks = self.style_marks
+            total_marks_for_ms = marks_from_ex + style_marks
+            if not total_marks_for_ms == self.marks:
+                raise MarkschemeError(
+                    f'Total marks available in marking scheme '
+                    f'({total_marks_for_ms}) do not match the marks allocated '
+                    f'in the marking scheme configuration ({self.marks})'
+                )
+
+        logger.info(f'Marking validation: Passed')
+
+    def add_exercise(self, exercise: 'exercises.ExerciseBase'):
+        """
+        Add an exercise to this marking scheme.
+
+        :param exercise: :class:`Exercise` to add.
+        """
+        if exercise not in self.exercises:
+            self.exercises.append(exercise)
+
     def get_submissions(self):
-        path = (
-            Path(self.submission_path)
-            if self.submission_path is not None
-            else Path(".", "submissions")
-        )
+        """
+        Get the submissions using the marking scheme finder.
 
-        if not path.is_dir():
-            raise NotADirectoryError(f"{path} is not a directory")
+        This is a generator.
+        """
+        if self.finder is None:
+            raise RuntimeError('No submission finder provided.')
 
-        for pth in path.iterdir():
-            if not pth.is_file() or not pth.suffix == ".py":
-                continue
-            yield pth
+        yield from self.finder.get_submissions()
 
-    def get_db(self):
-        return get_db(self.marks_db, self.unique_id)
-
-    def format_return(self, score, total_score):
+    def format_return(self, score: int, total_score: int) -> str:
         """
         Format the returned score.
 
@@ -135,61 +215,95 @@ class MarkingScheme:
         percentage = round(100 * score / total_score)
         if self.score_style == "basic":
             return str(score)
+
         elif self.score_style == "percentage":
             return f"{percentage}%"
+
         elif self.score_style == "marks/total":
             return f"{score} / {total_score}"
+
         elif self.score_style == "all":
             return f"{score} / {total_score} ({percentage}%)"
+
         else:
-            return self.score_style.format(score=score,
-                                           total=total_score,
-                                           percentage=percentage)
+            return self.score_style.format(
+                score=score, total=total_score, percentage=percentage
+            )
 
-    def patched_import(self):
-        def patched(*args, **kwargs):
-            pass
+    def exercise(
+        self,
+        name: Optional[str] = None,
+        cls: Type[exercises.Exercise] = None,
+        interactive: bool = False,
+        **args: Any,
+    ) -> exercises.Exercise:
+        """
+        Create a new exercise using this function or class as the model solution.
 
-        return patched
+        The decorated function or class will be wrapped by an Exercise object that
+        behaves like the original object.
 
-    @contextmanager
-    def sandbox(self, ns):
-        try:
-            yield
-        finally:
-            pass
+        Keyword arguments are forwarded to the Exercise instance.
+
+        :param interactive:
+        :param name: Name for the exercise.
+        :type name: str
+        :param cls: The exercise class to be instantiated. Defaults to
+            :class:`FunctionExercise` if a function is decorated and
+            :class:`ClassExercise` if a class is decorated.
+        :param submission_name: Name of function or class to find in submission
+            namespace.
+        :type cls: :class:`Exercise`
+        """
+        if isinstance(name, str):
+            args["name"] = name
+            name = None
+
+        def decorator(fn):
+            nonlocal cls
+            if cls is None and isfunction(fn):
+                cls = exercises.FunctionExercise
+            elif cls is None and isclass(fn) and interactive:
+                cls = exercises.InteractionExercise
+            elif cls is None and isclass(fn):
+                cls = exercises.ClassExercise
+            else:
+                raise TypeError("Expecting function or class.")
+
+            ex = cls(fn, **args)
+            self.add_exercise(ex)
+            return ex
+
+        if name is None:
+            return decorator
+
+        else:
+            return decorator(name)
+
+    def create_grading_task(self):
+        """
+        Create the grading task to run in the grader.
+
+        :return:
+        """
+        return execution.TestRun(self.exercises, self.preload_modules)
 
     @log_calls
-    def run(self, submission):
+    def run(self, generate=False):
         """
-        Grade a submission.
+        Grade the submissions.
 
-        :param submission: Submission to grade
+        :param generate: If true is passed, each submission will be passed
+        to the caller via a yield. Default False.
         """
-        code = submission.compile()
-        ns = {}
-        with self.sandbox(ns):
-            exec(code, ns)
-
-        score = 0
-        total_score = 0
-        report = []
-        for mark, total_marks, feedback in (
-            ex.run(ns) for ex in self.exercises
-        ):
-            score += mark
-            total_score += total_marks
-            report.append(feedback)
-        submission.add_feedback("tests", "\n".join(report))
-
-        lint_report = self.linter(submission)
-
-        style_score = round(self.style_calc(lint_report) * self.style_marks)
-        score += style_score
-        total_score += self.style_marks
-        style_feedback = [lint_report.read(),
-                          f'Style score: {style_score} / {self.style_marks}']
-
-        submission.add_feedback("style", '\n'.join(style_feedback))
-        submission.percentage = round(100 * score / total_score)
-        submission.score = self.format_return(score, total_score)
+        grader = self.grader
+        grader.set_db(self.db)
+        linter = self.linter
+        task = self.create_grading_task()
+        for sub in self.get_submissions():
+            if linter:
+                lint_report = linter.check(sub)
+                sub.add_feedback('style', lint_report)
+            grader.submit(task, sub)
+            if generate:
+                yield sub

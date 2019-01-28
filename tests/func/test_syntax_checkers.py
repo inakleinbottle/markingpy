@@ -14,4 +14,25 @@
 #      You should have received a copy of the GNU General Public License
 #      along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-#
+from textwrap import dedent
+
+import pytest
+
+from markingpy import PyLintChecker, PyLintReport, Submission
+
+
+@pytest.fixture
+def submission():
+    msg = '''
+    def func(a, b):
+        """docstring"""
+        return a + b
+
+    '''
+    return Submission('submission1', dedent(msg))
+
+
+def test_syntax_checker(submission):
+    checker = PyLintChecker()
+    report = checker.check(submission)
+    assert isinstance(report, PyLintReport)

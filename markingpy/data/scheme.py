@@ -1,44 +1,96 @@
+#      Markingpy automatic grading tool for Python code.
+#      Copyright (C) 2019 University of East Anglia
+#
+#      This program is free software: you can redistribute it and/or modify
+#      it under the terms of the GNU General Public License as published by
+#      the Free Software Foundation, either version 3 of the License, or
+#      (at your option) any later version.
+#
+#      This program is distributed in the hope that it will be useful,
+#      but WITHOUT ANY WARRANTY; without even the implied warranty of
+#      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#      GNU General Public License for more details.
+#
+#      You should have received a copy of the GNU General Public License
+#      along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#
+
+
+
 # Sample marking scheme for python files.
+from markingpy import exercise, mark_scheme
+
+ms = mark_scheme(submission_path="submission", style_marks=5)
 
 
-from markingpy import Exercise, mark_scheme
-
-
-mark_scheme(test=90.0, style=10.0, style_formula="default")
-
-
-# Exercises should be derived from the
-# Exercise class found in the markingpy module
-class Exercise1(Exercise):
+# Function exercise
+#
+@exercise("Name of Exercise")
+def first_ex(arg1, arg2, *, kwonly_arg=None):
     """
-    Each exercise should have its own test class.
-    Test cases are given by functions defined in
-    the class that start with "test_". The names
-    should be descriptive of what the test does.
+    For the first exercise, create a function that does something.
+
+    :param arg1:
+    :param arg2:
+    :param kwonly_arg:
+    :return:
     """
+    if kwonly_arg:
+        print(kwonly_arg)
+    return arg1 + arg2
 
-    # The names list declares all the functions that
-    # should be found in a submission file. If these
-    # are not present, due to compilation errors,
-    # they should be replaced by functions that fail
-    # the tests
-    names = ["ex1_func"]
 
-    def set_up(self):
-        """
-        Perform the necessary setup
-        """
-        # Omit this function if no additional setup is required.
-        pass
+# Basic tests are test calls, which are added as follows.
+first_ex.add_test_call((1, 2), marks=1)
+# The exercise object itself can also be called to give the the parameters
+first_ex.add_test_call(first_ex(-1, 2, kwonly_arg=2))
+# The speed of the submission function can also be tested against the model
+# solution using a timing test. A timing test needs a number of test cases.
+cases = [
+    first_ex(1, 1),
+    first_ex(10, 10),
+    first_ex(100, 100),
+    first_ex(1000, 1000, kwonly_arg="Timing test"),
+]
+first_ex.timing_test(cases, marks=5)
 
-    def test_function_1(self):
-        """
-        The first test case for the exercise.
 
-        Replace this text with a short, but meaningful
-        description of the test to be done.
-        """
-        input1 = 1.0
-        input2 = 2.0
-        output = 3.0
-        self.assertEqual(ex1_func(input1, input2), output)
+# Custom tests can be defined using a the first_ex.test decorator
+@first_ex.test(marks=1)
+def custom_test():
+    """
+    Doc string will be used for short description, if none is explicitly
+    provided.
+    """
+    try:
+        # exercise object used to refer to the submission function
+        output = first_ex("bad args", 2)
+    except (TypeError, ValueError):
+        return True  # Return True for a successful test
+
+    return False  # Return False for unsuccessful tests
+
+
+
+
+# Note: Errors that are not caught in a custom test will be propagated to
+# the test executor, and the test will be failed.
+# Class exercise
+#
+@exercise(name="Class Exercise", descr="Short description for feedback.")
+class ExerciseClass:
+
+    def __init__(self, name, description):
+        self.name = name
+        self.description = description
+
+    def method_one(self, arg):
+        return self.name + ": " + self.description + ":\n" + arg
+
+    def method_two(self, other_name):
+        return self.name + ": " + other_name
+
+
+instance_1 = ExerciseClass("instance_one", "First instance of the test class")
+instance_1.method_one.add_test_call("try one", marks=1)

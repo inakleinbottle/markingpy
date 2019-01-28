@@ -20,13 +20,13 @@
 # -- Project information -----------------------------------------------------
 
 project = "markingpy"
-copyright = "2019, Sam Morley"
+copyright = "2019, University of East Anglia"
 author = "Sam Morley"
 
 # The short X.Y version
 version = ""
 # The full version, including alpha/beta/rc tags
-release = "0.1"
+release = "1,0"
 
 
 # -- General configuration ---------------------------------------------------
