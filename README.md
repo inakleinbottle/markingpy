@@ -3,6 +3,8 @@ Tool for grading a directory of python submissions using a scheme file containin
 
 [![Build Status](https://travis-ci.com/inakleinbottle/markingpy.svg?branch=master)](https://travis-ci.com/inakleinbottle/markingpy) 
 
+Read the full documentation at [https://markingpy.readthedocs.io](markingpy.readthedocs.io).
+
 ## Installation
 Markingpy should be installed using the pip installation tool.
 
@@ -82,19 +84,8 @@ which will dump feedback files (.txt) into *directory* for each submission.
 ## Development setup
 Clone the repository and run ``make install``. Markingpy uses ``pipenv`` to handle its dependencies.
 
-
-## Release History
-
- * 0.1.0
-	* First release
-
-## Meta
-
-Sam Morley - sam@inakleinbottle.com
-
-Distributed under the GPLV3 license. See ``LICENSE`` for more information.
-
-[https://inakelinbottle.com](https://inakleinbottle.com)
+## Additional Disclaimer
+This is my first Python package that I have "released" (i.e. put on PyPI), and I would be grateful for any feedback and constructive criticisms. Contributions are certainly welcome in all forms; see below.
 
 ## Contributing
 
@@ -103,4 +94,24 @@ Distributed under the GPLV3 license. See ``LICENSE`` for more information.
 3. Commit your changes (`git commit -am 'Add some feature')
 4. Push to the branch (`git push origin feature/name`)
 5. Create a new Pull Request.
+
+## Release History
+
+ * 0.2.0
+	* Added support to tests on arbitrary objects and their methods.
+	* Various improvements to the code base. Added descriptor support
+	  for test classes and exercise classes.
+	* Expanded the documentation.
+	* Implemented finder system for locating submissions, which currently
+	  supports loading submissions from directory (as before) and SQLite 
+	  databases. Planned support for server loading.
+
+ * 0.1.0
+	* First release
+
+## Meta
+
+Sam Morley - sam@inakleinbottle.com - [https://inakelinbottle.com](https://inakleinbottle.com)
+
+Distributed under the GPLV3 license. See ``LICENSE`` for more information.
 

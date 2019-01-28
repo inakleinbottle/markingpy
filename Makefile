@@ -33,7 +33,6 @@ clean-pyc:
 	find . -name '*~' -exec rm -f {} +
 
 publish: build
-	pip install 'twine>=1.50'
 	twine upload dist/*
 	rm -rf build dist .egg markingpy.egg-info
 

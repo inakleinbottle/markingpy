@@ -11,9 +11,9 @@ from markingpy.utils import build_style_calc
 
 
 class TestStyleCalculator(TestCase):
+
     def test_style_calc_builder(self):
         """Test the style calculator factory."""
-
         test_dict = {
             "error": 1,
             "warning": 2,
@@ -21,20 +21,18 @@ class TestStyleCalculator(TestCase):
             "convention": 4,
             "statement": 15,
         }
-
         calc = build_style_calc(
             "(error + warning + refactor + convention)" "/statement"
         )
         mock = MagicMock()
         mock.stats = test_dict
-
         self.assertEqual(calc(mock), 7 / 15)
 
 
 class TestSubmissionClass(TestCase):
+
     def setUp(self):
-        with patch("builtins.open", mock_open(read_data="")) as m_open:
-            self.submission = Submission(Path("testpath"))
+        self.submission = Submission("testpath", "")
 
     def test_compilation_of_source(self):
         """Test compilation of good source code."""
@@ -42,13 +40,11 @@ class TestSubmissionClass(TestCase):
         def func_1():
             pass
         """
-        self.submission.source = dedent(source)
-        compile_mock = MagicMock()
+        self.submission.source = self.submission.raw_source = dedent(source)
+        compile_mock = MagicMock(return_value=(None, None))
         compile_mock.removed_chunks = []
         self.submission.compiler = compile_mock
-
-        code = self.submission.compile()
-
+        self.submission.compile()
         compile_mock.assert_called_with(dedent(source))
         self.assertIn("compilation", self.submission.feedback)
         self.assertEqual(
@@ -69,9 +65,8 @@ class TestSubmissionClass(TestCase):
         \treturn None
         """
         )
-
-        self.submission.source = source
-        compile_mock = MagicMock()
+        self.submission.source = self.submission.raw_source = source
+        compile_mock = MagicMock(return_value=(None, None))
         removed_chunk = MagicMock()
         err = MagicMock()
         err.exc = "TabError"
@@ -82,11 +77,8 @@ class TestSubmissionClass(TestCase):
         \treturn None"""
         )
         compile_mock.removed_chunks = [removed_chunk]
-
         self.submission.compiler = compile_mock
-
         self.submission.compile()
-
         compile_mock.assert_called_with(dedent(source))
         self.assertIn("compilation", self.submission.feedback)
         self.assertIsInstance(self.submission.feedback["compilation"], str)

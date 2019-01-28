@@ -5,7 +5,6 @@ from markingpy import mark_scheme, exercise
 from markingpy.utils import time_run
 from markingpy.cases import TimingCase
 
-
 ms = mark_scheme(style_marks=20, score_style="all")
 
 
@@ -21,7 +20,6 @@ add.add_test_call((1, 2), marks=1)
 add.add_test_call((2, 1), marks=1)
 add.add_test_call((-1, 2), marks=1)
 add.add_test_call((2, 4), marks=1)
-
 cases = [(1, 1), (100, 100), (1000, 1000)]
 add.timing_test(
     (TimingCase(cs, {}, time_run(add, cs, {})) for cs in cases),
@@ -30,13 +28,12 @@ add.timing_test(
 )
 
 
-@add.test(marks=2, descr="Test Type enforcement")
+# @add.test(marks=2, descr="Test Type enforcement")
 def test_type_enforcement():
     """
     Test that the function only accepts integer inputs and
     returns an integer.
     """
-
     # float input
     a = 1.0
     b = 2.0
@@ -48,7 +45,9 @@ def test_type_enforcement():
         feedback = (
             "Your function handled non-integer inputs"
             " by raising an exception:\n {}"
-        ).format(err)
+        ).format(
+            err
+        )
         print(feedback)
         return True
 
@@ -58,9 +57,12 @@ def test_type_enforcement():
             'Your function returned None and printed "{}"'
             " in response to non-integer inputs.\n"
             " It would be better to raise an exception."
-        ).format(printed)
+        ).format(
+            printed
+        )
         print(feedback)
         return True
+
     else:
         feedback = "Your function did not enforce integer inputs."
         print(feedback)

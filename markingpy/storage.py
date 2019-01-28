@@ -1,3 +1,19 @@
+#      Markingpy automatic grading tool for Python code.
+#      Copyright (C) 2019 Sam Morley
+#
+#      This program is free software: you can redistribute it and/or modify
+#      it under the terms of the GNU General Public License as published by
+#      the Free Software Foundation, either version 3 of the License, or
+#      (at your option) any later version.
+#
+#      This program is distributed in the hope that it will be useful,
+#      but WITHOUT ANY WARRANTY; without even the implied warranty of
+#      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#      GNU General Public License for more details.
+#
+#      You should have received a copy of the GNU General Public License
+#      along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
 from os.path import exists as pathexists
 import csv
 import sqlite3
@@ -13,7 +29,7 @@ class Database:
         self.path = path
         parent = path.parent
         if not parent.exists():
-            logger.debug(f'Creating directory {parent}')
+            logger.debug(f"Creating directory {parent}")
             parent.mkdir(parents=True)
         self.markscheme_id = markscheme_id
         self.db = db = sqlite3.connect(str(self.path))
@@ -51,8 +67,7 @@ class Database:
             " FROM submissions WHERE"
             " markscheme_id = ? AND"
             " submission_id = ?",
-            (self.markscheme_id,
-            submission_id,)
+            (self.markscheme_id, submission_id),
         )
         return cur.fetchone()
 
@@ -61,7 +76,7 @@ class Database:
             "SELECT submission_id, percentage, feedback"
             " FROM submissions WHERE"
             " markscheme_id = ?",
-            (self.markscheme_id,)
+            (self.markscheme_id,),
         )
         return cur.fetchall()
 
@@ -71,7 +86,7 @@ _DATABASE = None
 
 def get_db(path, markscheme_id):
     global _DATABASE
-    logger.debug(f'Getting database from path: {str(path)}')
+    logger.debug(f"Getting database from path: {str(path)}")
     if _DATABASE is None:
         _DATABASE = Database(path, markscheme_id)
     return _DATABASE
