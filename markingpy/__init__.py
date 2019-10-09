@@ -1,5 +1,5 @@
 #      Markingpy automatic grading tool for Python code.
-#      Copyright (C) 2019 Sam Morley
+#      Copyright (C) 2019 University of East Anglia
 #
 #      This program is free software: you can redistribute it and/or modify
 #      it under the terms of the GNU General Public License as published by
@@ -26,10 +26,12 @@ from .import config
 from .import execution
 from .import finders
 from .import grader
-from .import linters
+from .import syntax
 from .import markscheme
 from .import submission
 from .import utils
+from .import users
+from .import storage
 
 from .config import *
 from .grader import *
@@ -37,22 +39,26 @@ from .exercises import *
 from .markscheme import *
 from .cases import *
 from .submission import *
-from .linters import *
 from .finders import *
 from .compiler import *
 from .execution import *
+from .syntax import *
+from .users import *
+from .storage import *
 
 logging.basicConfig(level=LOGGING_LEVELS[GLOBAL_CONF["logging"]["level"]])
 __all__ = (
+    users.__all__ +
     cases.__all__ +
     config.__all__ +
     compiler.__all__ +
     exercises.__all__ +
     finders.__all__ +
     grader.__all__ +
-    linters.__all__ +
     markscheme.__all__ +
     submission.__all__ +
     execution.__all__ +
+    syntax.__all__ +
+    storage.__all__ +
     ['utils']
 )

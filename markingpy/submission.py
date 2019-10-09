@@ -1,5 +1,5 @@
 #      Markingpy automatic grading tool for Python code.
-#      Copyright (C) 2019 Sam Morley
+#      Copyright (C) 2019 University of East Anglia
 #
 #      This program is free software: you can redistribute it and/or modify
 #      it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@ Scores = namedtuple("Scores", ["raw", "total", "percentage", "formatted"])
 __all__ = ['Submission']
 
 
+# TODO: Uniformize reports and feedback over all tests, exercises, and tools.
 class Submission:
 
     def __init__(self, reference: str, source: str, **kwargs: Any):
@@ -51,10 +52,7 @@ class Submission:
             if self.compiler.removed_chunks:
                 feedback = "\n".join(
                     (
-                        "Removed:\n" +
-                        c.content +
-                        "\n" +
-                        str(c.get_first_error().exc)
+                        "Removed:\n" + c.content + "\n" + str(c.get_first_error().exc)
                         for c in self.compiler.removed_chunks
                     )
                 )

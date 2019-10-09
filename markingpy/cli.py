@@ -1,5 +1,5 @@
 #      Markingpy automatic grading tool for Python code.
-#      Copyright (C) 2019 Sam Morley
+#      Copyright (C) 2019 University of East Anglia
 #
 #      This program is free software: you can redistribute it and/or modify
 #      it under the terms of the GNU General Public License as published by
@@ -14,7 +14,11 @@
 #      You should have received a copy of the GNU General Public License
 #      along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
+#
 """Command line interface for MarkingPy."""
+import importlib.util
+import sys
+
 
 import statistics
 from argparse import ArgumentParser
@@ -22,8 +26,28 @@ from functools import partial
 from pathlib import Path
 import traceback
 
-from .markscheme import import_markscheme
-from .grader import Grader
+from .import markscheme as _markscheme
+from .import users
+from .import finders
+
+
+
+# noinspection PyNoneFunctionAssignment
+def import_markscheme(path: Path) -> 'MarkingScheme':
+    """
+    Import the marking scheme from path.
+
+    :param path: Path to import
+    :return: markscheme
+    """
+    spec = _markscheme.get_spec_path_or_module(path)
+    if spec is None:
+        raise _markscheme.MarkschemeError(f'Could not locate marking scheme: {path}')
+
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    sys.modules[mod.__name__] = mod
+    return users.mark_scheme()
 
 
 class CLIError(Exception):
@@ -40,14 +64,9 @@ def run():
         add_help=False,
     )
     parser.add_argument(
-        '-v',
-        '--verbose',
-        action='store_true',
-        help='Run markingpy in verbose mode',
+        '-v', '--verbose', action='store_true', help='Run markingpy in verbose mode'
     )
-    parser.add_argument(
-        'scheme_or_command', help='Marking scheme or command to use.'
-    )
+    parser.add_argument('scheme_or_command', help='Marking scheme or command to use.')
     args, missed_args = parser.parse_known_args()
     cmd = args.scheme_or_command
     fn = getattr(TerminalCommands, cmd, None)
@@ -62,9 +81,7 @@ class TerminalCommands:
     @staticmethod
     def create(args):
         parser = ArgumentParser(description='Create a new marking scheme')
-        parser.add_argument(
-            'path', help='Path in which to create new marking scheme.'
-        )
+        parser.add_argument('path', help='Path in which to create new marking scheme.')
         parser.parse_args(args)
         print('Creating new marking scheme')
 
@@ -95,17 +112,9 @@ def handle_marking_scheme(path, args, root_parser):
         help="Formula used to generate a score from the linter report.",
     )
     run_parser.add_argument(
-        "--style-marks",
-        type=int,
-        help="Number of marks available for coding style.",
+        "--score-style", help="Formatting style for marks to be displayed in feedback."
     )
-    run_parser.add_argument(
-        "--score-style",
-        help="Formatting style for marks to be displayed in feedback.",
-    )
-    run_parser.add_argument(
-        "--submission-path", type=str, help="Path to submissions."
-    )
+    run_parser.add_argument("--submission-path", type=str, help="Path to submissions.")
     run_parser.add_argument(
         "--marks-db",
         type=str,
@@ -118,6 +127,13 @@ def handle_marking_scheme(path, args, root_parser):
             "Total marks available for this coursework."
             " This option is only used for validation."
         ),
+    )
+    run_parser.add_argument(
+        "target",
+        type=str,
+        default=None,
+        required=False,
+        help=("Target directory for checking."),
     )
     run_parser.set_defaults(func=partial(run_ms, markscheme))
     summary_parser = sub_parsers.add_parser(
@@ -169,10 +185,7 @@ def handle_marking_scheme(path, args, root_parser):
         help="Path to database to store submission results and feedback.",
     )
     dump_parser.add_argument(
-        "path",
-        default=".",
-        nargs="?",
-        help="Directory to populate with feedback.",
+        "path", default=".", nargs="?", help="Directory to populate with feedback."
     )
     dump_parser.set_defaults(func=partial(dump, markscheme))
     validate_parser = sub_parsers.add_parser(
@@ -189,7 +202,7 @@ def handle_marking_scheme(path, args, root_parser):
         'help', help='Print the markingpy help to console.'
     )
 
-    def display_help(a):
+    def display_help():
         parser.print_help()
         parser.exit()
 
@@ -199,10 +212,12 @@ def handle_marking_scheme(path, args, root_parser):
 
 
 def run_ms(markscheme, args):
+    target = args.pop('target')
+    if target is not None:
+        markscheme.finder = finders.DirectoryFinder(target)
     markscheme.update_config(vars(args))
     markscheme.validate()
-    with Grader(markscheme) as grader:
-        grader.grade_submissions()
+    markscheme.run()
 
 
 def summary(markscheme, args):

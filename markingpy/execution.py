@@ -1,5 +1,5 @@
 #      Markingpy automatic grading tool for Python code.
-#      Copyright (C) 2019 Sam Morley
+#      Copyright (C) 2019 University of East Anglia
 #
 #      This program is free software: you can redistribute it and/or modify
 #      it under the terms of the GNU General Public License as published by
@@ -14,13 +14,13 @@
 #      You should have received a copy of the GNU General Public License
 #      along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
+#
 """Execution context for running tests"""
 import sys
 import logging
 from io import StringIO
-from contextlib import (
-    redirect_stdout, redirect_stderr, contextmanager, ExitStack
-)
+from contextlib import ( redirect_stdout, redirect_stderr, contextmanager, ExitStack)
+from importlib import import_module
 from warnings import catch_warnings
 
 logger = logging.getLogger(__name__)
@@ -82,3 +82,24 @@ class ExecutionContext:
         finally:
             self.warnings = warned
             self.do_clean_up()
+
+
+class TestRun:
+    """
+    Test runner to run the test cases for each exercise.
+    """
+
+    def __init__(self, exercises, preload_modules):
+        self.exercises = exercises
+        self.preload_modules = preload_modules
+
+    def exec_ns(self, code):
+        ns = {}
+        exec (code, ns)
+        return ns
+
+    def __call__(self, code):
+        for mod in self.preload_modules:
+            import_module(mod)
+        ns = self.exec_ns(code)
+        return [ex.run(ns) for ex in self.exercises]

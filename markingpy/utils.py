@@ -1,5 +1,5 @@
 #      Markingpy automatic grading tool for Python code.
-#      Copyright (C) 2019 Sam Morley
+#      Copyright (C) 2019 University of East Anglia
 #
 #      This program is free software: you can redistribute it and/or modify
 #      it under the terms of the GNU General Public License as published by
@@ -14,9 +14,11 @@
 #      You should have received a copy of the GNU General Public License
 #      along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
+#
 """
 Utilities for the MarkingPy package.
 """
+
 import ast
 import logging
 import typing
@@ -25,12 +27,8 @@ from functools import wraps
 from inspect import isfunction, Signature, Parameter, stack
 from time import time
 
-from typing import (
-    Any, Set, Callable, Dict, Tuple, ContextManager, TYPE_CHECKING
-)
+from typing import ( Any, Set, Callable, Dict, Tuple, ContextManager)
 
-if TYPE_CHECKING:
-    from .linters import LinterReport
 ARGS = Tuple[Any, ...]
 KWARGS = Dict[str, Any]
 try:
@@ -122,9 +120,7 @@ def log_calls(level: str = None) -> Callable:
 
         @wraps(func)
         def wrapper(*args, **kwargs):
-            msg = (
-                f'Call {func.__name__}' f'({str_format_args(args, kwargs)})'
-            )
+            msg = (f'Call {func.__name__}' f'({str_format_args(args, kwargs)})')
             logger.log(level, msg)
             return func(*args, **kwargs)
 
@@ -145,14 +141,14 @@ def time_exceeded():
     raise RunTimeoutError
 
 
-def build_style_calc(formula) -> Callable[['LinterReport'], float]:
+def build_style_calc(formula) -> Callable[[dict], float]:
     """
     Build a style calculator by providing a formula
     """
 
-    def calculator(report):
+    def calculator(stats):
         try:
-            return max(0.0, eval(formula, report.stats))
+            return max(0.0, eval(formula, stats))
 
         except ZeroDivisionError:
             return 0.0
@@ -160,13 +156,7 @@ def build_style_calc(formula) -> Callable[['LinterReport'], float]:
     return calculator
 
 
-DEFAULT_STYLE_FORMULA = (
-    "1. - float(5*error"
-    " + warning"
-    " + refactor"
-    " + convention)"
-    " / statement"
-)
+DEFAULT_STYLE_FORMULA = ("10. - (5*error" " + warning" " + refactor" " + convention)")
 default_style_calc = build_style_calc(DEFAULT_STYLE_FORMULA)
 
 

@@ -1,5 +1,5 @@
 #      Markingpy automatic grading tool for Python code.
-#      Copyright (C) 2019 Sam Morley
+#      Copyright (C) 2019 University of East Anglia
 #
 #      This program is free software: you can redistribute it and/or modify
 #      it under the terms of the GNU General Public License as published by
@@ -135,13 +135,9 @@ class Compiler:
         lines = chunk.content.splitlines()
         reason.lineno = chunk.line_start + lineno - 1
         self.removed += 1
-        removed_chunk = RemovedChunk(
-            reason.lineno, reason.lineno, lines[lineno - 1]
-        )
+        removed_chunk = RemovedChunk(reason.lineno, reason.lineno, lines[lineno - 1])
         removed_chunk.add_reason(Reason(self.removed, reason))
-        adjacent = [
-            c for c in self.removed_chunks if c.is_adjacent(removed_chunk)
-        ]
+        adjacent = [c for c in self.removed_chunks if c.is_adjacent(removed_chunk)]
         if not adjacent:
             self.removed_chunks.append(removed_chunk)
         else:
@@ -151,9 +147,7 @@ class Compiler:
             self.removed_chunks.append(removed_chunk)
         # print('Removing line', reason.lineno, lines[lineno-1])
         return (
-            Chunk(
-                chunk.line_start, lineno - 2, "\n".join(lines[: lineno - 1])
-            ),
+            Chunk(chunk.line_start, lineno - 2, "\n".join(lines[: lineno - 1])),
             Chunk(reason.lineno, chunk.line_end, "\n".join(lines[lineno:])),
         )
 

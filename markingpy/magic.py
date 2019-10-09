@@ -1,5 +1,5 @@
 #      Markingpy automatic grading tool for Python code.
-#      Copyright (C) 2019 Sam Morley
+#      Copyright (C) 2019 University of East Anglia
 #
 #      This program is free software: you can redistribute it and/or modify
 #      it under the terms of the GNU General Public License as published by
@@ -14,10 +14,9 @@
 #      You should have received a copy of the GNU General Public License
 #      along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
+#
 import logging
-import types
 from collections import ChainMap
-from functools import wraps
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +24,10 @@ logger = logging.getLogger(__name__)
 class BaseDescriptor:
     cast = None
 
-    def __set_name__(self, name):
+    def __init__(self, name='var', cast_to=None):
         self.name = name
+        if cast_to:
+            self.cast = cast_to
 
     def __set__(self, instance, val, typ=None):
         if self.cast is not None and val is not None:
@@ -71,53 +72,7 @@ class DefaultGetterDescriptor(BaseDescriptor):
         return super().__set__(instance, None, typ)
 
 
-class StringFactoryDescriptor(SafeNoneDescriptor):
-    cast = list
-    factory = None
-
-    def __set__(self, instance, val, typ=None):
-        if isinstance(val, str) and self.factory is not None:
-            return super().__set__(instance, self.factory(val), typ)
-
-        super().__set__(instance, val, typ)
-
-
-def split_by_commas(self, string):
-    return [s.strip() for s in string.split(',')]
-
-
-class StringSplitDescriptor(StringFactoryDescriptor):
-    factory = split_by_commas
-
-
-def common(cast=None):
-    typ = types.new_class("NewDescriptor", (DefaultGetterDescriptor,))
-    typ.cast = cast
-    return typ
-
-
-def method_marks(marks):
-
-    def deco(func):
-
-        @wraps(func)
-        def wrapper(inst, *args, **kwargs):
-            if not func in inst.__marked_methods:
-                inst.__marked_methods[func] = marks
-            return func(inst, *args, **kwargs)
-
-        return wrapper
-
-    return deco
-
-
-_MAGIC = {
-    "args": ARGS,
-    "kwargs": KWARGS,
-    "marks": method_marks,
-    "common": common,
-    "split_commas": StringSplitDescriptor,
-}
+_MAGIC = {"args": ARGS, "kwargs": KWARGS, "common": DefaultGetterDescriptor}
 
 
 class MagicMeta(type):
@@ -131,11 +86,4 @@ class MagicMeta(type):
 
 
 class MagicBase(metaclass=MagicMeta):
-
-    def __init_subclass__(cls, **kwargs):
-        annotations = cls.__dict__.get("__annotations__", {})
-        for name, val in annotations.items():
-            inst = val()
-            inst.__set_name__(name)
-            setattr(cls, name, inst)
-        super().__init_subclass__(**kwargs)
+    pass

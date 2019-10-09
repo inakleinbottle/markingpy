@@ -1,3 +1,20 @@
+#      Markingpy automatic grading tool for Python code.
+#      Copyright (C) 2019 University of East Anglia
+#
+#      This program is free software: you can redistribute it and/or modify
+#      it under the terms of the GNU General Public License as published by
+#      the Free Software Foundation, either version 3 of the License, or
+#      (at your option) any later version.
+#
+#      This program is distributed in the hope that it will be useful,
+#      but WITHOUT ANY WARRANTY; without even the implied warranty of
+#      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#      GNU General Public License for more details.
+#
+#      You should have received a copy of the GNU General Public License
+#      along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#
 from unittest import mock
 from collections import namedtuple
 from contextlib import redirect_stdout
@@ -6,7 +23,7 @@ from time import sleep
 
 import pytest
 
-from markingpy.exercises import exercise
+from markingpy import exercise
 from markingpy import cases
 from markingpy import execution
 from markingpy import exercises
@@ -106,8 +123,6 @@ def test_call_test_run_through_call(call_test_m):
         return "Other" + str(input)
 
     output = call_test_m(other)
-    assert isinstance(output, cases.TestFeedback)
-    assert output.test is call_test_m
     assert output.mark == 0, "This test should fail."
     assert isinstance(output.feedback, str), "Feedback should be string."
 
@@ -124,7 +139,7 @@ def timing_test_m():
         cases.TimingCase((0.02,), {}, 0.02),
         cases.TimingCase((0.1,), {}, 0.1),
     ]
-    return cases.TimingTest(timing_cases, 0.2, exercise=test_func)
+    return cases.TimingTest(timing_cases, 0.5, exercise=test_func)
 
 
 def test_timing_test_setup_common_attributes(timing_test_m):
@@ -137,10 +152,8 @@ def test_timing_test_setup_common_attributes(timing_test_m):
 def test_timing_test_specific_attributes(timing_test_m):
     assert isinstance(timing_test_m.cases, list)
     assert len(timing_test_m.cases) == 3
-    assert all(
-        isinstance(case, cases.TimingCase) for case in timing_test_m.cases
-    )
-    assert timing_test_m.tolerance == 0.2
+    assert all(isinstance(case, cases.TimingCase) for case in timing_test_m.cases)
+    assert timing_test_m.tolerance == 0.5
 
 
 def test_timing_test_create_execution_context(timing_test_m):
@@ -267,6 +280,7 @@ def test_call_test_running_funcs(call_test_func):
 def mock_exercise_func():
     return mock.MagicMock()
 
+
 @pytest.fixture
 def mock_submission_func():
     return mock.MagicMock()
@@ -278,27 +292,31 @@ def mock_function_exercise(mock_exercise_func):
     ex.func = mock_exercise_func
     return ex
 
+
 @pytest.fixture
 def mock_execution_context():
     ctx = mock.MagicMock(autospec=execution.ExecutionContext)
     return ctx
 
 
-def test_call_test_expected_error_get_success(mock_execution_context, mock_function_exercise):
+def test_call_test_expected_error_get_success(
+    mock_execution_context, mock_function_exercise
+):
     mock_function_exercise.side_effect = lambda *a, **k: RuntimeError('bad args')
-    test = cases.CallTest(cases.Call(('bad arg',), {}), None, expects_error=RuntimeError,
-                          exercise=mock_function_exercise)
-
-    mock_execution_context.error = (RuntimeError, RuntimeError('An error occurred'), None)
+    test = cases.CallTest(
+        cases.Call(('bad arg',), {}),
+        None,
+        expects_error=RuntimeError,
+        exercise=mock_function_exercise,
+    )
+    mock_execution_context.error = (
+        RuntimeError, RuntimeError('An error occurred'), None
+    )
     success = test.get_success(mock_execution_context, None)
     assert success
-
     mock_execution_context.error = None
     success = test.get_success(mock_execution_context, True)
     assert not success
-
     mock_execution_context.error = (TypeError, TypeError('A type error occurred'), None)
     success = test.get_success(mock_execution_context, True)
     assert not success
-
-

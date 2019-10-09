@@ -1,3 +1,20 @@
+#      Markingpy automatic grading tool for Python code.
+#      Copyright (C) 2019 University of East Anglia
+#
+#      This program is free software: you can redistribute it and/or modify
+#      it under the terms of the GNU General Public License as published by
+#      the Free Software Foundation, either version 3 of the License, or
+#      (at your option) any later version.
+#
+#      This program is distributed in the hope that it will be useful,
+#      but WITHOUT ANY WARRANTY; without even the implied warranty of
+#      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#      GNU General Public License for more details.
+#
+#      You should have received a copy of the GNU General Public License
+#      along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#
 # Test exercises
 from collections import namedtuple
 import pytest
@@ -11,8 +28,8 @@ from math import sqrt
 
 import markingpy
 from markingpy import exercises
-from markingpy.exercises import (exercise, Exercise, ExerciseFeedback)
-from markingpy import cases
+from markingpy.exercises import ( Exercise, ExerciseFeedback)
+from markingpy import cases, exercise
 
 Call = namedtuple('Call', ['args', 'kwargs'])
 
@@ -177,18 +194,9 @@ def calltest_cases():
         ),
         * (call(Decimal(randbetween(-5, 5))) for _ in range(2)),
         * (call(Fraction(randbetween(-5, 5))) for _ in range(2)),
-        * (
-            call(complex(randbetween(-5, 5), randbetween(-10, 10)))
-            for _ in range(2)
-        ),
-        * (
-            call([randbetween(-5, 5) for _ in range(n)])
-            for n in [1, 5, 10, 90]
-        ),
-        * (
-            call(tuple(randbetween(-5, 5) for _ in range(n)))
-            for n in [1, 5, 10, 90]
-        ),
+        * (call(complex(randbetween(-5, 5), randbetween(-10, 10))) for _ in range(2)),
+        * (call([randbetween(-5, 5) for _ in range(n)]) for n in [1, 5, 10, 90]),
+        * (call(tuple(randbetween(-5, 5) for _ in range(n))) for n in [1, 5, 10, 90]),
     ]
 
 
@@ -241,11 +249,13 @@ def exercise_target():
 
 @pytest.fixture
 def exercise_fixture(exercise_target):
-    return Exercise(exercise_target,
-                    name='exercise',
-                    descr='description',
-                    marks=5,
-                    submission_name='sub_func')
+    return Exercise(
+        exercise_target,
+        name='exercise',
+        descr='description',
+        marks=5,
+        submission_name='sub_func',
+    )
 
 
 def test_common_attributes(exercise_fixture):
@@ -277,57 +287,48 @@ def test_exercise_lock(exercise_fixture, exercise_target):
 def test_total_marks_property(exercise_fixture):
     mcks = [mock.MagicMock(marks=i) for i in range(1, 4)]
     exercise_fixture.tests = mcks
-
     assert exercise_fixture.total_marks == 6
 
 
 def test_exercise_validation(exercise_fixture, exercise_target):
     with pytest.raises(exercises.ExerciseError):
         exercise_fixture.validate()
-
     mcks = [mock.MagicMock(marks=i) for i in range(2, 4)]
     exercise_fixture.tests = mcks
-
-    result_mock = mock.MagicMock(marks=2,
-                                 total_marks=2,
-                                 feedback='',
-                                 per_test=[])
+    result_mock = mock.MagicMock(marks=2, total_marks=2, feedback='', per_test=[])
     exercise_fixture.run = mock.MagicMock(return_value=result_mock)
     ns = {'sub_func': exercise_target}
-
     with pytest.raises(exercises.ExerciseError):
         exercise_fixture.validate()
-
     exercise_fixture.run.assert_called_with(ns)
-
     result_mock.total_marks = 5
-
     with pytest.raises(exercises.ExerciseError):
         exercise_fixture.validate()
-
     result_mock.marks = 5
     exercise_fixture.validate()
 
+
 def test_get_submission_func(exercise_fixture):
+
     def mck():
         pass
+
     ns = {'sub_func': mck}
     assert exercise_fixture.get_submission_function(ns) is mck
-
     ns = {'sub_func1': mck}
     assert exercise_fixture.get_submission_function(ns) is None
 
 
 def test_custom_test_decorator(exercise_fixture):
+
     def func():
         pass
+
     wrapped = exercise_fixture.test(func)
     assert isinstance(wrapped, cases.Test)
-
     wrapped = exercise_fixture.test('name')(func)
     assert isinstance(wrapped, cases.Test)
     assert wrapped.name == 'name'
     assert wrapped.test_func is func
-
     with pytest.raises(TypeError):
         exercise_fixture.test(True)

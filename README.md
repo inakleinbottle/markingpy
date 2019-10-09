@@ -16,14 +16,14 @@ pip install markingpy
 There are two steps to using markingpy. First is to create the marking scheme file, which should be of the following form:
 
 ```python
-from markingpy import mark_scheme, exercise
+from markingpy import mark_scheme, exercise, PyLintChecker
 
 # If you want to use timing tests, use 
 from markingpy import TimingCase
 
 # Initialise mark scheme configuration.
 ms = mark_scheme(
-	style_marks=10, # Number of marks for coding style
+    linter=PyLintChecker(),  # add a linter to the marking process
 	submissions_path='submissions' # Directory to search for submissions
 )
 
@@ -50,7 +50,7 @@ ex_1_function.timing_test(cases, marks=2)
 
 
 @ex_1_function.test
-def custom_test()
+def custom_test():
 	"""
 	Define a custom test. This test determines whether the
 	submission function does any type checking during
@@ -62,7 +62,7 @@ def custom_test()
 	"""
 	
 	# Use the function ex_1_function in the test
-	# this will be replaced by the sumbission function
+	# this will be replaced by the submission function
 	# during testing
 	try:
 		out = ex_1_function(1.0, 2.0)
@@ -91,11 +91,17 @@ This is my first Python package that I have "released" (i.e. put on PyPI), and I
 
 1. Fork it (<https://github.com/inakleinbottle/markingpy/fork>)
 2. Create your feature branch (`git checkout -b feature/name`)
-3. Commit your changes (`git commit -am 'Add some feature')
+3. Commit your changes (`git commit -m 'Add some feature')
 4. Push to the branch (`git push origin feature/name`)
 5. Create a new Pull Request.
 
 ## Release History
+
+ * 1.0.0
+    * Reworked grader system. Tests can now be run in separate processes to provide better isolation.
+    * Reworked command line interface.
+    * Reorganised and improved test suite.
+    * Greatly simplified marking scheme creation and exercise association.
 
  * 0.2.0
 	* Added support to tests on arbitrary objects and their methods.

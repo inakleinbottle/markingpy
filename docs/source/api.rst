@@ -3,6 +3,8 @@ Marking scheme creation
 -----------------------
 .. module:: markingpy
 
+
+
 .. autofunction:: exercise
 
 .. autofunction:: mark_scheme
@@ -12,12 +14,15 @@ Exercises
 ---------
 
 .. autoclass:: Exercise
-    :members:
+
 
 .. autoclass:: FunctionExercise
     :members:
 
 .. autoclass:: ClassExercise
+    :members:
+
+.. autoclass:: InteractionExercise
     :members:
 
 
@@ -47,21 +52,11 @@ Marking Schemes
 .. autoclass:: MarkingScheme
     :members:
 
-
-.. autoclass:: Importer
-
-.. autoclass:: ModuleList
-
-.. autoclass:: ControlledFunction
-
-.. autoclass:: WrappedModule
-
 Finders
 -------
 
-.. module:: markingpy.finders
+.. automodule:: markingpy.finders
 
-.. versionadded:: 0.2.0
 
 .. autoclass:: BaseFinder
     :members:

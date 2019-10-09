@@ -1,5 +1,5 @@
 #      Markingpy automatic grading tool for Python code.
-#      Copyright (C) 2019 Sam Morley
+#      Copyright (C) 2019 University of East Anglia
 #
 #      This program is free software: you can redistribute it and/or modify
 #      it under the terms of the GNU General Public License as published by
@@ -15,7 +15,15 @@
 #      along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 """
-Submission finder tools.
+A finder is an object that makes submission code available to the grader.
+Several finders are provided by default and, unless otherwise specified,
+the :class:`DirectoryFinder` object is used. This finder retrieves all
+Python (`.py`) files in the path specified when the tool is invoked using
+the command line. Other builtin finders include a null finder, used for
+testing, and a SQLite finder that retrieves submissions form a database.
+
+Each finder object should support a single method, :func:`get_submissions`,
+that returns a generator yielding :class:`submission.Submission` objects.
 """
 
 from abc import ABC, abstractmethod
@@ -73,11 +81,7 @@ class DirectoryFinder(BaseFinder):
 class SQLiteFinder(BaseFinder):
 
     def __init__(
-        self,
-        path: Union[str, Path],
-        table: str,
-        ref_field: str,
-        source_field: str,
+        self, path: Union[str, Path], table: str, ref_field: str, source_field: str
     ):
         self.path = Path(path)
         self.table = table
@@ -90,8 +94,7 @@ class SQLiteFinder(BaseFinder):
 
         conn = sqlite3.connect(self.path)
         for ref, source in conn.execute(
-            f"SELECT {self.ref_field}, {self.source_field}"
-            f" FROM {self.table}"
+            f"SELECT {self.ref_field}, {self.source_field} FROM {self.table}"
         ):
             yield submission.Submission(ref, source)
 

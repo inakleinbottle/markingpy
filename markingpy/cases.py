@@ -1,5 +1,5 @@
 #      Markingpy automatic grading tool for Python code.
-#      Copyright (C) 2019 Sam Morley
+#      Copyright (C) 2019 University of East Anglia
 #
 #      This program is free software: you can redistribute it and/or modify
 #      it under the terms of the GNU General Public License as published by
@@ -14,6 +14,7 @@
 #      You should have received a copy of the GNU General Public License
 #      along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
+#
 import logging
 import types
 import typing
@@ -22,9 +23,7 @@ import inspect
 from collections import namedtuple, abc
 from contextlib import redirect_stdout
 from io import StringIO
-from typing import (
-    Callable, Union, Optional, Type, Any, Tuple, Dict, List, Iterable
-)
+from typing import ( Callable, Union, Optional, Type, Any, Tuple, Dict, List, Iterable)
 from warnings import WarningMessage
 
 from .utils import time_run, str_format_args
@@ -59,10 +58,9 @@ class BaseTest(magic.MagicBase):
     :param descr: Short description to be displayed in feedback.
     :param marks: Marks to award for this component, default=0.
     """
-    name: common(str)
-    descr: common(str)
-    marks: common(None)
-    __enforced = ["create_test", "run"]
+    name = common('name', str)
+    descr = common('descr', str)
+    marks = common('marks')
     indent = " " * 4
 
     def __init__(
@@ -132,15 +130,12 @@ class BaseTest(magic.MagicBase):
         """
         return ctx.ran_successfully and test_output
 
-    def get_marks(
-        self, ctx: ExecutionContext, test_output: Any, success: bool
-    ) -> int:
+    def get_marks(self, ctx: ExecutionContext, test_output: Any, success: bool) -> int:
         return self.marks if success else 0
 
     def format_error(self, err: Tuple[Type[Exception], Exception, Any]) -> str:
         return "\n".join(
-            self.indent + line.strip()
-            for line in str(err[1]).strip().splitlines()
+            self.indent + line.strip() for line in str(err[1]).strip().splitlines()
         )
 
     def format_warnings(self, warnings: List[WarningMessage]) -> str:
@@ -176,7 +171,7 @@ class BaseTest(magic.MagicBase):
             feedback.append(self.format_error(err))
         if warnings:
             feedback.append(self.format_warnings(warnings))
-        return TestFeedback(self, marks, "\n".join(feedback))
+        return TestFeedback(self.name, marks, "\n".join(feedback))
 
 
 class ExecutionFailedError(Exception):
@@ -200,26 +195,19 @@ class CallTest(BaseTest):
     :param call_args: Arguments to use.
     :param call_kwargs: Keyword arguments to use.
     :param expects_error: Exception(s) to expect on execution.
-
-        .. versionadded:: 0.2.0
     :param tolerance: Tolerance to allow in numerical equality testing.
         Defaults to None, which is inactive (equality must be exact).
         This option cannot be used with non-numerical output.
-
-        .. versionadded:: 0.2.0
-
     """
-    call_args: args  # args is a tuple, and will be converted.
-    call_kwargs: kwargs  # kwargs is a dict, and will be converted
+    call_args = args('call_args')
+    call_kwargs = kwargs('call_kwargs')
 
     def __init__(
         self,
         call_args: Optional[ARGS],
         call_kwargs: Optional[KWARGS],
         *,
-        expects_error: Union[
-            Tuple[Type[Exception]], Type[Exception], None
-        ] = None,
+        expects_error: Union[Tuple[Type[Exception]], Type[Exception], None] = None,
         tolerance: Optional[float] = None,
         **kwargs: Any,
     ):
@@ -229,13 +217,8 @@ class CallTest(BaseTest):
         self.tolerance = tolerance
         super().__init__(**kwargs)
         self.expected = self.get_expected()
-        if (
-            tolerance is not None and
-            not isinstance(self.expected, numbers.Number)
-        ):
-            raise TypeError(
-                'Near matches are not available for non-numeric ' 'types'
-            )
+        if (tolerance is not None and not isinstance(self.expected, numbers.Number)):
+            raise TypeError('Near matches are not available for non-numeric ' 'types')
 
     def get_expected(self):
         """
@@ -247,10 +230,11 @@ class CallTest(BaseTest):
         except Exception as err:
             if self.expects_error is not None and isinstance(err, self.expects_error):
                 return None
+
             raise ExecutionFailedError from err
+
         else:
             return rv
-        return None
 
     def create_test(self, other: Callable) -> ExecutionContext:
         return ExecutionContext()
@@ -260,6 +244,7 @@ class CallTest(BaseTest):
             err = ctx.error
             if err is None:
                 return False
+
             elif isinstance(err[1], self.expects_error):
                 return True
 
@@ -341,8 +326,7 @@ class TimingTest(BaseTest):
             raise ValueError("Cases not correctly defined.")
 
         logger.info(
-            'Adding timing test with cases:'
-            f'\n{", ".join(str(c) for c in cases)}\n)'
+            'Adding timing test with cases:' f'\n{", ".join(str(c) for c in cases)}\n)'
         )
         self.cases = cases
         self.tolerance = tolerance
@@ -396,9 +380,7 @@ class Test(BaseTest):
     :param test_func: Testing function.
     """
 
-    def __init__(
-        self, test_func: Callable[..., bool], *args: Any, **kwargs: Any
-    ):
+    def __init__(self, test_func: Callable[..., bool], *args: Any, **kwargs: Any):
         self.test_func = test_func
         super().__init__(*args, **kwargs)
 
@@ -425,8 +407,8 @@ class MethodTest(CallTest):
     :param inst_args: Arguments to instantiate the object.
     :param inst_kwargs: Keyword arguments to instantiate the object
     """
-    inst_args: args
-    inst_kwargs: kwargs
+    inst_args = args('inst_args')
+    inst_kwargs = kwargs('inst_kwargs')
 
     def __init__(
         self,
@@ -443,7 +425,7 @@ class MethodTest(CallTest):
         super().__init__(call_args, call_kwargs, **kwargs)
 
     def get_expected(self):
-        inst = self.exercise(* self.inst_args, ** self.inst_kwargs)
+        inst = self.exercise.func(* self.inst_args, ** self.inst_kwargs)
         func = getattr(inst, self.method)
         return func(* self.call_args, ** self.call_kwargs)
 
@@ -464,8 +446,8 @@ class MethodTimingTest(TimingTest):
     :param inst_args: Arguments to instantiate the object.
     :param inst_kwargs: Keyword arguments to instantiate the object
     """
-    inst_args: args
-    inst_kwargs: kwargs
+    inst_args = args('inst_args')
+    inst_kwargs = kwargs('inst_kwargs')
 
     def __init__(
         self,
@@ -539,12 +521,8 @@ class InteractionTest(BaseTest):
 
         :return:
         """
-        self.instance = self.cls(
-            * self.inst_call.args, ** self.inst_call.kwargs
-        )
-        proxy_cls = types.new_class(
-            'Proxy', (), exec_body=self.create_proxy_ns
-        )
+        self.instance = self.cls(* self.inst_call.args, ** self.inst_call.kwargs)
+        proxy_cls = types.new_class('Proxy', (), exec_body=self.create_proxy_ns)
         return proxy_cls()
 
     def success_criterion(
@@ -571,9 +549,7 @@ class InteractionTest(BaseTest):
             fn = None
 
         def deco(func):
-            self.success_criteria.append(
-                SuccessCriterion(name, descr, marks, func)
-            )
+            self.success_criteria.append(SuccessCriterion(name, descr, marks, func))
             return func
 
         if not fn:
@@ -590,9 +566,7 @@ class InteractionTest(BaseTest):
             return False
 
         crt = self.success_criteria
-        return (
-            ctx.ran_successfully and all(c.criterion(test_output) for c in crt)
-        )
+        return ctx.ran_successfully and all(c.criterion(test_output) for c in crt)
 
     def run(self, other: Callable) -> Type:
         other(self.create_instance_proxy())
