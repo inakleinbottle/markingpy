@@ -18,7 +18,7 @@
 """
 Utilities for the MarkingPy package.
 """
-
+import abc
 import ast
 import logging
 import typing
@@ -49,6 +49,7 @@ __all__ = [
     'time_run',
     'str_format_args',
     'TestCaseFunction',
+    'EqualityTester',
 ]
 POS_OR_KW = Parameter.POSITIONAL_OR_KEYWORD
 
@@ -219,3 +220,61 @@ if resource is not None and signal is not None:
 
 else:
     cpu_limit = None
+
+
+
+class EqualityTester(abc.ABC):
+    """
+    Abstract base class for Equality testers. 
+    """
+
+    @abc.abstractmethod
+    def check(self, output, expected) -> bool:
+        """
+        Check the output against the expected output.
+        """
+
+
+class StandardEqualityTester(EqualityTester):
+    """
+    Standard equality tester class, tests equality using built-in __eq__
+    operator.
+    """
+
+    def check(self, output, expected):
+        return output == expected
+
+
+class ApproximateEqualityTester(EqualityTester):
+    """
+    Approximately equal equality tester. Tests whether value is within
+    a given tolerance of the expected value.
+    """
+    def __init__(self, tolerance=1e-12):
+        self.tolerance = tolerance
+
+    def check(self, output, expected):
+        return abs(output - expected) < self.tolerance
+
+
+class NumpyArrayEqualityTester(EqualityTester):
+    """
+    Test (exact) equality of Numpy arrays
+    """
+
+    def check(self, output, expected):
+        import numpy as np
+        return np.equal(output, expected)
+
+
+class NumpyArrayApproximateEqualTester(EqualityTester):
+    """
+    Numpy array approximately equal tester.
+    """
+
+    def __init__(self, tolerance=1e-12):
+        self.tolerance = tolerance
+
+    def check(self, output, expected):
+        import numpy as np
+        return np.allclose(output, expected, atol=self.tolerance)

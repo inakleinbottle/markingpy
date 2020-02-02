@@ -27,6 +27,7 @@ from typing import ( Callable, Union, Optional, Type, Any, Tuple, Dict, List, It
 from warnings import WarningMessage
 
 from .utils import time_run, str_format_args
+from .Utils import EqualityTester, StandardEqualityTester, ApproximateEqualityTester
 from .execution import ExecutionContext
 from .import magic
 
@@ -198,6 +199,9 @@ class CallTest(BaseTest):
     :param tolerance: Tolerance to allow in numerical equality testing.
         Defaults to None, which is inactive (equality must be exact).
         This option cannot be used with non-numerical output.
+    :param output_checker: `EqualityTester` instance to check equality
+        of output against expected.
+        Defaults to a `StandardEqualityTester` or `ApproximateEqualityTester`.
     """
     call_args = args('call_args')
     call_kwargs = kwargs('call_kwargs')
@@ -209,12 +213,21 @@ class CallTest(BaseTest):
         *,
         expects_error: Union[Tuple[Type[Exception]], Type[Exception], None] = None,
         tolerance: Optional[float] = None,
+        output_checker: Optional[EqualityTester] = None,
         **kwargs: Any,
     ):
         self.call_args = call_args
         self.call_kwargs = call_kwargs
         self.expects_error = expects_error
+        
         self.tolerance = tolerance
+        if output_checker is None:
+            if tolerance:
+                output_checker = ApproximateEqualityTester(tolerance)
+            else:
+                output_checker = StandardEqualityTester()
+
+        self.output_checker = output_checker
         super().__init__(**kwargs)
         self.expected = self.get_expected()
         if (tolerance is not None and not isinstance(self.expected, numbers.Number)):
@@ -250,17 +263,8 @@ class CallTest(BaseTest):
 
             return False
 
-        if test_output == self.expected:
-            return True
+        return self.output_checker.check(test_output, self.expected)
 
-        if self.tolerance is None:
-            return False
-
-        if not isinstance(test_output, numbers.Number):
-            return False
-
-        diff = abs(test_output - self.expected)
-        return diff < self.tolerance
 
     def run(self, other: Callable) -> Any:
         args_msg = str_format_args(self.call_args, self.call_kwargs)
