@@ -27,7 +27,7 @@ from typing import ( Callable, Union, Optional, Type, Any, Tuple, Dict, List, It
 from warnings import WarningMessage
 
 from .utils import time_run, str_format_args
-from .Utils import EqualityTester, StandardEqualityTester, ApproximateEqualityTester
+from .utils import EqualityTester, StandardEqualityTester, ApproximateEqualityTester
 from .execution import ExecutionContext
 from .import magic
 
