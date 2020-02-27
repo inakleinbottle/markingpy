@@ -129,10 +129,9 @@ def handle_marking_scheme(path, args, root_parser):
         ),
     )
     run_parser.add_argument(
-        "target",
+        "--target",
         type=str,
         default=None,
-        required=False,
         help=("Target directory for checking."),
     )
     run_parser.set_defaults(func=partial(run_ms, markscheme))
@@ -201,12 +200,13 @@ def handle_marking_scheme(path, args, root_parser):
     help_parser = sub_parsers.add_parser(
         'help', help='Print the markingpy help to console.'
     )
-
-    def display_help():
+    
+    def display_help(*_):
         parser.print_help()
         parser.exit()
 
     help_parser.set_defaults(func=display_help)
+    parser.set_defaults(func=display_help)
     new_args = parser.parse_args(args)
     new_args.func(new_args)
 
