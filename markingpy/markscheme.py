@@ -22,7 +22,7 @@ import warnings
 
 from inspect import isclass, isfunction
 from pathlib import Path
-from typing import ( Optional, Type, Dict, Tuple, Any, TYPE_CHECKING, Union)
+from typing import (Optional, Type, Dict, Tuple, Any, TYPE_CHECKING, Union)
 
 from .import finders
 from .import storage
@@ -164,9 +164,10 @@ class MarkingScheme:
             # ExerciseError raised if any exercise fails to validate
             # This also locks all exercises into submission mode.
             try:
+                logger.info("Validating: %s", ex)
                 ex.validate()
             except exercises.ExerciseError as err:
-                logger.error(f'Failed to validate {str(ex)}')
+                logger.error(f'Failed to validate {str(ex)}\n{err}')
                 raise MarkingSchemeError from err
 
             logger.debug(f'Validation of {ex.name}: Passed')

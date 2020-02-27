@@ -22,6 +22,7 @@ import tempfile
 import collections
 import os
 import ast
+import types
 
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -38,6 +39,68 @@ if TYPE_CHECKING:
 __all__ = [
     'CodeStyleCheckerABC', 'CodeStyleCheckerABC', 'PyLintChecker', 'PyLintReport'
 ]
+
+
+PYTHON_STATEMENT_NAMES = [
+        "FunctionDef",
+        "AsyncFunctionDef",
+        "ClassDef",
+        "Return",
+        "Delete",
+        "Assign",
+        "AugAssign",
+        "AnnAssign",
+        "For",
+        "AsyncFor",
+        "While",
+        "If",
+        "With",
+        "AsyncWith",
+        "Raise",
+        "Try",
+        "Assert",
+        "Import",
+        "ImportFrom",
+        "Global",
+        "Nonlocal",
+        "Expr",
+        "Pass"
+        "Break",
+        "Continue",
+        ]
+
+
+class _StatementCounter(ast.NodeVisitor):
+    """
+    Helper class to count the number of statements in Python source.
+    """
+
+    def __init__(self):
+        self.statements = 0
+
+
+def _statement_visitor(self, node):
+    self.statements += 1
+    print(node)
+    self.generic_visit(node)
+
+
+def _ns_prep(ns):
+    return ns.update({
+            f"visit_{name}": _statement_visitor
+            for name in PYTHON_STATEMENT_NAMES
+            })
+
+StatementCounter = types.new_class(
+        "StatementCounter",
+        (_StatementCounter,),
+        exec_body=_ns_prep)
+
+
+def count_statements(root_node):
+    cntr = StatementCounter()
+    cntr.visit(root_node)
+    return cntr.statements
 
 
 class CodeStyleReportABC(ABC):
@@ -125,5 +188,6 @@ class PyLintChecker(CodeStyleCheckerABC):
             cli_args = [path] + self.cli_args
             (stdout, stderr) = py_run(" ".join(cli_args), return_std=True)
         return PyLintReport(
-            json.loads(stdout.read()), ast.parse(sub.raw_source).body, self.calc
+            json.loads(stdout.read()), count_statements(ast.parse(
+                        sub.raw_source)), self.calc
         )

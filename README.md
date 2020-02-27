@@ -97,6 +97,14 @@ This is my first Python package that I have "released" (i.e. put on PyPI), and I
 
 ## Release History
 
+ * 1.1.0
+    * Added the ability to customise equality testers used by tests cases.
+    * Fixed an issue with config that forced the creation of a directory
+    called ~.
+    * Fixed an issue where certain files were duplicated in the source.
+    * Fixed verbose output when using the command line tool.
+
+
  * 1.0.0
     * Reworked grader system. Tests can now be run in separate processes to provide better isolation.
     * Reworked command line interface.

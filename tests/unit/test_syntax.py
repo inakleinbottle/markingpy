@@ -14,6 +14,7 @@
 #      You should have received a copy of the GNU General Public License
 #      along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
+import ast
 import os
 import io
 from unittest import mock
@@ -22,6 +23,7 @@ from contextlib import contextmanager
 import pytest
 
 from markingpy import PyLintChecker, PyLintReport, Submission
+from markingpy.syntax import count_statements
 from markingpy import utils
 
 
@@ -59,6 +61,25 @@ def messages():
     ]
     return messages
 
+@pytest.fixture
+def simple_source():
+    return """
+def function(arg1, arg2):
+    if arg1:
+        print(arg2)
+    else:
+        print(arg1)
+    return None
+    """
+
+@pytest.fixture
+def simple_ast_root(simple_source):
+    return ast.parse(simple_source)
+
+def test_count_statements(simple_ast_root):
+    expected = 5
+    assert count_statements(simple_ast_root) == expected
+
 
 def test_pylint_report_get_stats(messages):
     rep = PyLintReport(messages, 3, None)
@@ -90,7 +111,7 @@ def test_pylint_report_calc_score_default():
     rep = PyLintReport(messages, 4, utils.default_style_calc)
     result = rep.get_score()
     assert isinstance(result, float)
-    assert result == 10. - 5. - 1. - 1. - 1.
+    assert result == 10. - (5. + 1. + 1. + 1.)/4
 
 
 def test_pylint_report_calc_score_custom():

@@ -159,7 +159,8 @@ def build_style_calc(formula) -> Callable[[dict], float]:
     return calculator
 
 
-DEFAULT_STYLE_FORMULA = ("10. - (5*error" " + warning" " + refactor" " + convention)")
+DEFAULT_STYLE_FORMULA = ("10. - (5*error" " + warning" " + refactor" " + "
+                         "convention)/statements")
 default_style_calc = build_style_calc(DEFAULT_STYLE_FORMULA)
 
 

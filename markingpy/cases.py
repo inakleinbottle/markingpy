@@ -179,8 +179,6 @@ class ExecutionFailedError(Exception):
     pass
 
 
-
-
 # noinspection PyUnresolvedReferences
 class CallTest(BaseTest):
     """
@@ -230,8 +228,10 @@ class CallTest(BaseTest):
         self.output_checker = output_checker
         super().__init__(**kwargs)
         self.expected = self.get_expected()
-        if (tolerance is not None and not isinstance(self.expected, numbers.Number)):
-            raise TypeError('Near matches are not available for non-numeric ' 'types')
+        if (tolerance is not None
+                and not isinstance(self.expected, numbers.Number)):
+            raise TypeError('Near matches are not available for non-numeric '
+                            'types')
 
     def get_expected(self):
         """
@@ -264,7 +264,6 @@ class CallTest(BaseTest):
             return False
 
         return self.output_checker.check(test_output, self.expected)
-
 
     def run(self, other: Callable) -> Any:
         args_msg = str_format_args(self.call_args, self.call_kwargs)
@@ -391,15 +390,20 @@ class Test(BaseTest):
     def get_name(self) -> str:
         return self.test_func.__name__
 
+    def get_marks(self, ctx: ExecutionContext, test_output: Any,
+                  success: bool) -> int:
+        assert 0 <= test_output <= self.marks
+        return test_output
+
     def create_test(self, other: Callable) -> ExecutionContext:
         ctx = ExecutionContext()
         ctx.add_context(self.exercise.set_function(other))
         return ctx
 
     def run(self, other: Callable):
-        return self.test_func()
-
-
+        # For an user defined test such as this, the output from the test
+        # function will be the number of marks given, or True/False
+        return int(self.test_func())
 
 
 # noinspection PyUnresolvedReferences

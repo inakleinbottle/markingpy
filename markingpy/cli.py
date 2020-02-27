@@ -19,17 +19,18 @@
 import importlib.util
 import sys
 
-
+import logging
 import statistics
 from argparse import ArgumentParser
 from functools import partial
 from pathlib import Path
 import traceback
 
+logger = logging.getLogger("markingpy")
+
 from .import markscheme as _markscheme
 from .import users
 from .import finders
-
 
 
 # noinspection PyNoneFunctionAssignment
@@ -42,7 +43,8 @@ def import_markscheme(path: Path) -> 'MarkingScheme':
     """
     spec = _markscheme.get_spec_path_or_module(path)
     if spec is None:
-        raise _markscheme.MarkschemeError(f'Could not locate marking scheme: {path}')
+        raise _markscheme.MarkingSchemeError(f'Could not locate marking '
+                                              f'scheme: {path}')
 
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -68,6 +70,8 @@ def run():
     )
     parser.add_argument('scheme_or_command', help='Marking scheme or command to use.')
     args, missed_args = parser.parse_known_args()
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
     cmd = args.scheme_or_command
     fn = getattr(TerminalCommands, cmd, None)
     if fn is None:
@@ -95,6 +99,7 @@ def handle_marking_scheme(path, args, root_parser):
         # root_parser.print_help()
         root_parser.exit()
     parser = ArgumentParser(usage=f'markingpy {path}')
+
     sub_parsers = parser.add_subparsers()
     run_parser = sub_parsers.add_parser(
         'run',
@@ -212,8 +217,9 @@ def handle_marking_scheme(path, args, root_parser):
 
 
 def run_ms(markscheme, args):
-    target = args.pop('target')
+    target = getattr(args, 'target', None)
     if target is not None:
+        delattr(args, "target")
         markscheme.finder = finders.DirectoryFinder(target)
     markscheme.update_config(vars(args))
     markscheme.validate()
