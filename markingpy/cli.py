@@ -200,7 +200,7 @@ def handle_marking_scheme(path, args, root_parser):
     help_parser = sub_parsers.add_parser(
         'help', help='Print the markingpy help to console.'
     )
-
+    
     def display_help(*_):
         parser.print_help()
         parser.exit()
