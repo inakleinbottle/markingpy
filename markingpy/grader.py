@@ -61,6 +61,7 @@ class SimpleGrader(GraderABC):
     """
 
     def __init__(self):
+        logger.info("Creating SimpleGrader instance")
         self.db = None
 
     def submit(self, task, submission):

@@ -53,12 +53,15 @@ def get_spec_path_or_module(
     name: Union[str, Path], modname: str = 'markingpy_marking_scheme'
 ) -> Optional[importlib.machinery.ModuleSpec]:
     path = Path(name).resolve()
+    logger.debug(f"Getting spec from {path}")
     if path.exists():
         return importlib.util.spec_from_file_location(modname, location=path)
 
     spec = importlib.util.find_spec(name)
     if spec is None:
         return spec
+
+    logger.debug("Found spec")
 
     spec.name = modname
     return spec
@@ -135,6 +138,7 @@ class MarkingScheme:
             self.finder = finder
         else:
             self.finder = None
+        logger.debug(f"Setting finder {self.finder}")
         # Unused parameters
         for k in kwargs:
             warnings.warn(f"Unrecognised option {k}")
@@ -287,9 +291,9 @@ class MarkingScheme:
 
         :return:
         """
+        logger.info("Creating grading task")
         return execution.TestRun(self.exercises, self.preload_modules)
 
-    @log_calls
     def run(self, generate=False):
         """
         Grade the submissions.
@@ -297,11 +301,18 @@ class MarkingScheme:
         :param generate: If true is passed, each submission will be passed
         to the caller via a yield. Default False.
         """
+        print("Silly!")
+        logger.info("Running grader")
         grader = self.grader
+        logger.info("Setting database")
         grader.set_db(self.db)
+        logger.info("Getting linter")
         linter = self.linter
+        logger.info("Creating grading task")
         task = self.create_grading_task()
+
         for sub in self.get_submissions():
+            logger.info(f"Grading submission {sub.ref}")
             if linter:
                 lint_report = linter.check(sub)
                 sub.add_feedback('style', lint_report)

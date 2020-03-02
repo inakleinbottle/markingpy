@@ -26,6 +26,7 @@ from functools import partial
 from pathlib import Path
 import traceback
 
+
 logger = logging.getLogger("markingpy")
 
 from .import markscheme as _markscheme
@@ -34,7 +35,7 @@ from .import finders
 
 
 # noinspection PyNoneFunctionAssignment
-def import_markscheme(path: Path) -> 'MarkingScheme':
+def import_markscheme(path: Path) -> _markscheme.MarkingScheme:
     """
     Import the marking scheme from path.
 
@@ -221,9 +222,11 @@ def run_ms(markscheme, args):
     if target is not None:
         delattr(args, "target")
         markscheme.finder = finders.DirectoryFinder(target)
-    markscheme.update_config(vars(args))
-    markscheme.validate()
-    markscheme.run()
+    #markscheme.update_config(vars(args))
+    #markscheme.validate()
+    run = getattr(markscheme, "run")
+    run()
+
 
 
 def summary(markscheme, args):
