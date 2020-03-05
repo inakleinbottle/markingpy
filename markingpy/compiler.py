@@ -200,7 +200,11 @@ class Compiler:
             Source - string containing source to be compiled.
         """
         self.to_process.append(Chunk(0, len(source.splitlines()), source))
+        i = 0
         while self.to_process:
+            i += 1
+            if i == 1000:
+                raise Exception("Could not compile")
             self.try_compile(self.to_process.popleft())
         self.sort_chunks()
         new_source = "\n".join(c.content for c in self.chunks)

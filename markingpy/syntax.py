@@ -162,13 +162,12 @@ class PyLintChecker(CodeStyleCheckerABC):
     Code style checker using PyLint as a backend
     """
 
-    def __init__(self, score_formula=None, max_score=None, **params):
+    def __init__(self, score_formula=None, max_score=10.0, **params):
         if score_formula is not None:
             self.calc = utils.build_style_calc(score_formula)
-            self.max_score = 10.0
         else:
             self.calc = utils.default_style_calc
-            self.max_score = max_score if max_score is not None else 10.0
+        self.max_score = max_score
         self.cli_args = args = []
         params.update(output_format='json')
         for k, v in params.items():

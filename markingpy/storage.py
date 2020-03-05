@@ -75,7 +75,8 @@ class CSVStorageDB(StorageABC):
 
         self.raw_file = f = open(self.path, 'w')
         atexit.register(f.close)
-        self.csv = csv.DictReader(f, ("submission_id", "percentage"))
+        self.csv = csv.DictReader(f, ("submission_id", "mark", "percentage",
+                                      "feedback"))
         self.mode = "read"
 
     def open_for_write(self):
@@ -84,7 +85,8 @@ class CSVStorageDB(StorageABC):
 
         self.raw_file = f = open(self.path, 'w')
         atexit.register(f.close)
-        self.csv = csv.DictWriter(f, ("submission_id", "percentage"))
+        self.csv = csv.DictWriter(f, ("submission_id", "mark", "percentage",
+                                      "feedback"))
         self.mode = "write"
 
     def close_file(self):
@@ -98,7 +100,12 @@ class CSVStorageDB(StorageABC):
     def add_record(self, record):
         if not self.mode == "write":
             self.open_for_write()
-        self.csv.writerow({"submission_id": record.id, "percentage": record.score})
+        self.csv.writerow({
+                "submission_id": record.id,
+                "mark": record.score,
+                "percentage": record.percentage,
+                "feedback": record.feedback
+            })
 
     def get_record(self, record_id):
         if not self.mode == "read":
@@ -131,6 +138,7 @@ class SQLiteDB(StorageABC):
         self.db.execute(
             "CREATE TABLE IF NOT EXISTS submissions ("
             " submission_id text primary key,"
+            " mark int,"
             " percentage int,"
             " feedback text,"
             " markscheme_id text"
@@ -143,10 +151,11 @@ class SQLiteDB(StorageABC):
             "INSERT OR REPLACE INTO"
             " submissions ("
             " submission_id,"
+            " mark,"
             " percentage,"
             " feedback,"
-            ") VALUES (?, ?, ?)",
-            (record.id, record.score, record.feedback),
+            ") VALUES (?, ?, ?, ?)",
+            (record.id, record.score, record.percentage, record.feedback),
         )
         self.db.commit()
 
@@ -161,7 +170,8 @@ class SQLiteDB(StorageABC):
 
     def get_all(self):
         cur = self.db.execute(
-            "SELECT submission_id, percentage, feedback" " FROM submissions"
+            "SELECT submission_id, mark, percentage, feedback"
+            " FROM submissions"
         )
         return cur.fetchall()
 

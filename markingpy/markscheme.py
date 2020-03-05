@@ -304,10 +304,9 @@ class MarkingScheme:
         logger.info("Running grader")
         grader = self.grader
         logger.info("Setting database")
-        grader.set_db(self.db)
+        #grader.set_db(self.db)
         logger.info("Getting linter")
         linter = self.linter
-        logger.info("Creating grading task")
         task = self.create_grading_task()
 
         for sub in self.get_submissions():
@@ -317,4 +316,14 @@ class MarkingScheme:
                 sub.add_feedback('style', lint_report, lint_report.get_score(), lint_report.max_score)
             grader.submit(task, sub)
 
+            self.db.add_record(_grader.Record(
+                sub.reference,
+                sub.score,
+                sub.percentage,
+                sub.generate_report()
+                )
+            )
+
             yield sub
+
+        logger.info(f"Max score: {sub.maximum_score}")

@@ -299,7 +299,17 @@ class Exercise(ExerciseBase):
         if submission_fun is None:
             return self.format_feedback([])
 
-        results = [test(submission_fun) for test in self.tests]
+        results = []
+        for test in self.tests:
+            logger.info(f"Running test {test.name}")
+            result = test(submission_fun)
+            if result.feedback == "The test timed out and was unable to " \
+                                  "complete":
+                results.append(result)
+                break
+            results.append(test(submission_fun))
+
+        #results = [test(submission_fun) for test in self.tests]
         return self.format_feedback(results)
 
 

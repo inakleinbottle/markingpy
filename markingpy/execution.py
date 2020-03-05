@@ -76,7 +76,6 @@ class ExecutionContext:
 
         except KeyboardInterrupt:
             raise
-
         except Exception:
             self.exception_handler()
         finally:
@@ -95,11 +94,16 @@ class TestRun:
 
     def exec_ns(self, code):
         ns = {}
-        exec (code, ns)
+        exec(code, ns)
         return ns
 
     def __call__(self, code):
         for mod in self.preload_modules:
             import_module(mod)
         ns = self.exec_ns(code)
-        return [ex.run(ns) for ex in self.exercises]
+        results = []
+        for ex in self.exercises:
+            logger.info(f"Running tests for exercise {ex}")
+            results.append(ex.run(ns))
+        return results
+        #return [ex.run(ns) for ex in self.exercises]

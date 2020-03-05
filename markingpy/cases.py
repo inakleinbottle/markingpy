@@ -19,6 +19,7 @@ import logging
 import types
 import typing
 import inspect
+import signal
 
 from collections import namedtuple, abc
 from contextlib import redirect_stdout
@@ -48,6 +49,10 @@ __all__ = [
     'InteractionTest',
     'SuccessCriterion',
 ]
+
+
+class TimeoutError(BaseException):
+    pass
 
 
 # noinspection PyUnresolvedReferences
@@ -102,8 +107,13 @@ class BaseTest(magic.MagicBase):
 
         test_output = None
         ctx = self.create_test(wrapped)
-        with ctx.catch():
-            test_output = self.run(wrapped)
+        try:
+            with ctx.catch():
+                test_output = self.run(wrapped)
+        except TimeoutError:
+            logger.info("Execution timed out")
+            return TestFeedback(self.name, 0, "The test timed out and was "
+                                              "unable to complete")
         return self.format_feedback(ctx, test_output)
 
     def create_test(self, other: Union[Callable, Type]) -> ExecutionContext:
@@ -268,7 +278,19 @@ class CallTest(BaseTest):
     def run(self, other: Callable) -> Any:
         args_msg = str_format_args(self.call_args, self.call_kwargs)
         print(f'Testing with input: ({args_msg})')
-        output = other(* self.call_args, ** self.call_kwargs)
+
+        def sighandler(signum, frame):
+            raise TimeoutError()
+
+        signal.signal(signal.SIGALRM, sighandler)
+        signal.alarm(10)
+
+        try:
+            output = other(* self.call_args, ** self.call_kwargs)
+        except TimeoutError:
+            print(f"Your function timed out during the run")
+            raise
+
         print(f'Expected: {self.expected}, got: {output}')
         return output
 
@@ -392,6 +414,8 @@ class Test(BaseTest):
 
     def get_marks(self, ctx: ExecutionContext, test_output: Any,
                   success: bool) -> int:
+        if test_output is None:
+            test_output = 0
         assert 0 <= test_output <= self.marks
         return test_output
 

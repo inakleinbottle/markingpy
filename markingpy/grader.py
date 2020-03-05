@@ -24,9 +24,11 @@ import logging
 import multiprocessing as mp
 from collections import namedtuple
 
+
+
 logger = logging.getLogger(__name__)
 __all__ = ['SimpleGrader', 'ProcessGrader', "Record"]
-Record = namedtuple('Record', ('id', 'score', 'feedback'))
+Record = namedtuple('Record', ('id', 'score', 'percentage', 'feedback'))
 
 
 class GraderABC(abc.ABC):
@@ -54,6 +56,13 @@ class GraderABC(abc.ABC):
         """
         pass
 
+    @abc.abstractmethod
+    def results(self):
+        """
+        Iterate over the results generated.
+        :return:
+        """
+
 
 class SimpleGrader(GraderABC):
     """
@@ -63,9 +72,16 @@ class SimpleGrader(GraderABC):
     def __init__(self):
         logger.info("Creating SimpleGrader instance")
         self.db = None
+        self.submissions = []
 
     def submit(self, task, submission):
-        result = task(submission.compile())
+        try:
+            compiled = submission.compile()
+        except Exception as err:
+            logger.info(f"Unable to compile {submission.reference}")
+            return
+
+        result = task(compiled)
         mark = sum(res.marks for res in result)
         total_mark = sum(res.total_marks for res in result)
         feedback = '\n'.join(res.feedback for res in result)
@@ -73,11 +89,19 @@ class SimpleGrader(GraderABC):
 
         if self.db:
             self.db.add_record(
-                Record(submission.reference, mark * 100 / total_mark, feedback)
+                Record(submission.reference, mark, mark * 100 / total_mark,
+                       feedback)
             )
+
+        self.submissions.append(submission)
+
 
     def set_db(self, db):
         self.db = db
+
+    def results(self):
+        yield from self.submissions
+
 
 
 def _task_worker(task, code, result):
@@ -108,11 +132,15 @@ class ProcessGrader(GraderABC):
         mark = sum(res.marks for res in result.value)
         total_mark = sum(res.total_marks for res in result.value)
         feedback = '\n'.join(res.feedback for res in result.value)
-        submission.add_feedback('tests', feedback)
+        submission.add_feedback('tests', feedback, mark, total_mark)
         if self.db:
             self.db.add_record(
-                Record(submission.reference, mark * 100 / total_mark, feedback)
+                Record(submission.reference, mark, mark * 100 / total_mark,
+                       feedback)
             )
 
     def set_db(self, db):
         self.db = db
+
+    def results(self):
+        pass

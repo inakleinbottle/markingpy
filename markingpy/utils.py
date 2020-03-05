@@ -151,7 +151,7 @@ def build_style_calc(formula) -> Callable[[dict], float]:
 
     def calculator(stats):
         try:
-            return max(0.0, eval(formula, stats))
+            return round(max(0.0, eval(formula, stats)))
 
         except ZeroDivisionError:
             return 0.0

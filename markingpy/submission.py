@@ -42,6 +42,9 @@ class Submission:
         self.maximum_score = 0
         self.feedback = {}
 
+    def __str__(self):
+        return self.reference
+
     @property
     def percentage(self):
         return round(100*self.score/self.maximum_score)
@@ -69,6 +72,7 @@ class Submission:
         """
         Add feedback to the submission.
         """
+        logger.info(f"Adding marks: {item}; {score}/{maximum_score}")
         self.feedback[item] = feedback
         self.score += score
         self.maximum_score += maximum_score
@@ -77,11 +81,11 @@ class Submission:
         """
         Generate report for this submission.
         """
-        if not self.code:
-            raise RuntimeError("Submission has not yet been compiled.")
+        #if not self.code:
+        #    raise RuntimeError("Submission has not yet been compiled.")
 
-        if not self.score:
-            raise RuntimeError("Submission has not yet been graded.")
+        #if not self.score:
+        #    raise RuntimeError("Submission has not yet been graded.")
 
         lines = [
             "Result summary for submission {}".format(self.reference),
@@ -89,9 +93,16 @@ class Submission:
             self.feedback.get("compilation", ""),
             "\nResults for exercises:",
             self.feedback.get("tests", ""),
-            "\nResults of style analysis:",
-            self.feedback.get("style", ""),
-            "\n" + "=" * 70 + "\n",
-            "Final score {}".format(self.score),
         ]
+
+        style_rep = self.feedback.get("style", None)
+        if style_rep is not None:
+            lines.extend([
+                    "\nResults of style analysis:",
+                    style_rep.get_text_report(),
+                    ])
+
+
+        lines.extend(["\n" + "=" * 70 + "\n",
+            "Final score {}".format(self.score),])
         return "\n".join(lines)
