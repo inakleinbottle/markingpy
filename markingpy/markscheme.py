@@ -301,7 +301,6 @@ class MarkingScheme:
         :param generate: If true is passed, each submission will be passed
         to the caller via a yield. Default False.
         """
-        print("Silly!")
         logger.info("Running grader")
         grader = self.grader
         logger.info("Setting database")
@@ -312,10 +311,10 @@ class MarkingScheme:
         task = self.create_grading_task()
 
         for sub in self.get_submissions():
-            logger.info(f"Grading submission {sub.ref}")
+            logger.info(f"Grading submission {sub.reference}")
             if linter:
                 lint_report = linter.check(sub)
-                sub.add_feedback('style', lint_report)
+                sub.add_feedback('style', lint_report, lint_report.get_score(), lint_report.max_score)
             grader.submit(task, sub)
-            if generate:
-                yield sub
+
+            yield sub

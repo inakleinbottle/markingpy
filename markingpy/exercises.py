@@ -153,7 +153,8 @@ class Exercise(ExerciseBase):
         self.marks = total_marks
         ns = {self.submission_name: self.func}
         result = self.run(ns)
-        logger.info("Feedback:\n%s", result.feedback)
+        logger.info(f"Feedback:\n{result.feedback}")
+
         if not result.total_marks == self.marks:
             raise ExerciseError(
                 f'{self.name} Error:\n'

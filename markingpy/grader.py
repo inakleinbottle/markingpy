@@ -69,7 +69,8 @@ class SimpleGrader(GraderABC):
         mark = sum(res.marks for res in result)
         total_mark = sum(res.total_marks for res in result)
         feedback = '\n'.join(res.feedback for res in result)
-        submission.add_feedback('tests', feedback)
+        submission.add_feedback('tests', feedback, mark, total_mark)
+
         if self.db:
             self.db.add_record(
                 Record(submission.reference, mark * 100 / total_mark, feedback)

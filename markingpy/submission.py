@@ -38,9 +38,13 @@ class Submission:
         self.compiler = Compiler()
         self.source = self.raw_source = source
         self.code = None
-        self.score = None
-        self.percentage = 0
+        self.score = 0
+        self.maximum_score = 0
         self.feedback = {}
+
+    @property
+    def percentage(self):
+        return round(100*self.score/self.maximum_score)
 
     @log_calls
     def compile(self) -> 'CodeType':
@@ -61,12 +65,13 @@ class Submission:
             self.add_feedback("compilation", feedback)
         return self.code
 
-    @log_calls
-    def add_feedback(self, item: str, feedback: str):
+    def add_feedback(self, item: str, feedback: str, score=0, maximum_score=0):
         """
         Add feedback to the submission.
         """
         self.feedback[item] = feedback
+        self.score += score
+        self.maximum_score += maximum_score
 
     def generate_report(self) -> str:
         """

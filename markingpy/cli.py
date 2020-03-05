@@ -224,8 +224,8 @@ def run_ms(markscheme, args):
         markscheme.finder = finders.DirectoryFinder(target)
     #markscheme.update_config(vars(args))
     #markscheme.validate()
-    run = getattr(markscheme, "run")
-    run()
+    for sub in markscheme.run():
+        print(sub.reference, sub.percentage)
 
 
 
